@@ -117,7 +117,7 @@ function getValidExpiration(value) {
 function getValidKeyword(value, keywords) {
     if (value != null) {
         const lowerValue = value.toLowerCase();
-        if (keywords.indexOf(lowerValue)) {
+        if (keywords.indexOf(lowerValue) >= 0) {
             return lowerValue;
         }
     }
@@ -125,9 +125,9 @@ function getValidKeyword(value, keywords) {
 }
 
 const pasteMystUrlInfo = {
-    endpoint = 'https://paste.myst.rs/', 
-    postEndpoint = 'https://paste.myst.rs/api/paste', 
-    getEndpoint = 'https://paste.myst.rs/api/paste?id='
+    endpoint: 'https://paste.myst.rs/', 
+    postEndpoint: 'https://paste.myst.rs/api/paste', 
+    getEndpoint: 'https://paste.myst.rs/api/paste?id='
 };
 
 class PasteMystForm {
@@ -138,10 +138,10 @@ class PasteMystForm {
     }
 }
 
-PasteMystForm.prototype.createForm = function(code, expiresIn, language) {
-    return new PasteMystFormJson
+function createForm(code, expiresIn, language) {
+    return new PasteMystForm
     (
-        encodeURI(code), // if encodeURI is not working, try encodeURIComponent
+        encodeURI(code), 
         getValidExpiration(expiresIn),
         getValidLanguage(language)
     );
@@ -158,57 +158,36 @@ class PasteMystInfo {
     }
 }
 
-PasteMystInfo.prototype.createFromResponse = function(response) {
+function createPasteMystInfoFromResponse(response) {
     return new PasteMystInfo
     (
         response.id,
-        PasteMystConstants.endpoint + response.id,
-        dateFromUnixSeconds(response.createdAt),
+        pasteMystUrlInfo.endpoint + response.id,
+        utcDateFromUnixSeconds(response.createdAt),
         decodeURI(response.code),
         response.expiresIn,
         response.language
     );
 }
 
-
-
-exports.printMsg = function() {
-    console.log('This is a message from the demo package');
-  }
-
-function getHttpsPostOptions(hostname, path, payload) {
-    return {
-        hostname: hostname,
-        port: 443,
-        path: (path != null ? path : '/'),
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Content-Length': payload.length
-        }
-      };
-}
-
-function getHttpsGetOptions(hostname, path) {
-    return{
-        hostname: hostname,
-        port: 443,
-        path: (path != null ? path : '/'),
-        method: 'GET'
-      };
-}
-
-function dateToUnixSeconds(date) {
-    return date.valueOf() / 1000;
-}
-
-function dateFromUnixSeconds(unixSeconds) {
+function utcDateFromUnixSeconds(unixSeconds) {
     return new Date(unixSeconds * 1000);
 }
 
-exports.postMyst = async function(code, expiration, language) {
-    const form = PasteMystForm.createForm(code, expiration, language);
-    //const json = JSON.stringify(form);
+function localDateFromUnixSeconds(unixSeconds) {
+    return convertUTCDateToLocalDate(utcDateFromUnixSeconds(unixSeconds));
+}
+
+function convertUTCDateToLocalDate(date) {
+    var newDate = new Date(date.getTime() - date.getTimezoneOffset()*60*1000);
+    return newDate;   
+}
+
+// ToDo: add error handling
+exports.createPasteMyst = async function(code, expiration, language) {
+    console.log(`postMyst: code: ${code}, expiration: ${expiration}, language: ${language}`);
+    const form = createForm(code, expiration, language);
+    const json = JSON.stringify(form);
     const options = {
         method: 'post', 
         url: pasteMystUrlInfo.postEndpoint, 
@@ -216,20 +195,29 @@ exports.postMyst = async function(code, expiration, language) {
         headers: {
             'Content-Type': 'application/json'
         }, 
-        data: form // should we just send the form here?
+        data: json // should we just send the form here?
     };
-    const response = await axios(options);
-}
-
-exports.getInfo = async function(id) {
-    const response = await axios.get(pasteMystUrlInfo.getEndpoint + id);
+    console.log(options);
+    const response = await axios(options)
+    .catch(err => console.log(`post error: ${err}`));
+    console.log('response');
     console.log(response);
-    const pasteMystInfo = PasteMystInfo.createFromResponse(response.data);
+    const pasteMystInfo = createPasteMystInfoFromResponse(response.data);
+    console.log('pasteMystInfo');
     console.log(pasteMystInfo);
     return pasteMystInfo;
 }
 
-// Only return a copy of the array to prevent external code from editing the source array
+exports.getPasteMyst = async function(id) {
+    console.log(`getInfo: id: ${id}`);
+    const response = await axios.get(pasteMystUrlInfo.getEndpoint + id);
+    console.log(response);
+    const pasteMystInfo = createPasteMystInfoFromResponse(response.data);
+    console.log(pasteMystInfo);
+    return pasteMystInfo;
+}
+
+// Return a copy of the array to prevent external code from editing the source array
 exports.getLanguageOptions = function() {
     return validLanguages.slice();
 }

@@ -1,6 +1,7 @@
-const https = require("https")
+const axios = require("axios")
 
-const pasteMystLanguage2 = {
+/*
+const pasteMystLanguages = {
     Unknown: 'Unknown', 
     Autodetect: 'autodetect',
     Plaintext: 'plaintext',
@@ -39,6 +40,20 @@ const pasteMystLanguage2 = {
     Xml: 'xml',
     Yaml: 'yaml'
 };
+
+const pasteMystExpiration = {
+    Unknown: 'Unknown', 
+    Never: "never",
+    OneHour: "1h" ,
+    TwoHours: "2h" ,
+    TenHours: "10h" ,
+    OneDay: "1d" ,
+    TwoDays: "2d" ,
+    OneWeek: "1w" ,
+    OneMonth: "1m" ,
+    OneYear: "1y" 
+};
+*/
 
 const validLanguages = [
     'autodetect',
@@ -91,11 +106,11 @@ const validExpirations = [
     "1y" 
 ];
 
-function toValidLanguage(value) {
+function getValidLanguage(value) {
     return getValidKeyword(value, validLanguages);
 }
 
-function toValidExpiration(value) {
+function getValidExpiration(value) {
     return getValidKeyword(value, validExpirations);
 }
 
@@ -108,54 +123,14 @@ function getValidKeyword(value, keywords) {
     }
     return "Unknown";
 }
-PasteMystInfoJson:
-[JsonPropertyName("id")]
-public string Id { get; set; }
 
-[JsonPropertyName("createdAt")]
-public uint Date { get; set; } // unix epoch time, ticks?
-
-[JsonPropertyName("code")]
-public string Code { get; set; }
-
-[JsonPropertyName("expiresIn")]
-public string Expiration { get; set; }
-
-[JsonPropertyName("language")]
-public string Language { get; set; }
-
-
-const pasteMystExpiration = {
-    Unknown: 'Unknown', 
-    Never: "never",
-    OneHour: "1h" ,
-    TwoHours: "2h" ,
-    TenHours: "10h" ,
-    OneDay: "1d" ,
-    TwoDays: "2d" ,
-    OneWeek: "1w" ,
-    OneMonth: "1m" ,
-    OneYear: "1y" 
+const pasteMystUrlInfo = {
+    endpoint = 'https://paste.myst.rs/', 
+    postEndpoint = 'https://paste.myst.rs/api/paste', 
+    getEndpoint = 'https://paste.myst.rs/api/paste?id='
 };
-
-const pasteMystConstants = {
-    PmEndpoint = "https://paste.myst.rs/", 
-    PmPostEndpoint = "https://paste.myst.rs/api/paste", 
-    PmGetEndpoint = "https://paste.myst.rs/api/paste?id="
-};
-
-
-
 
 class PasteMystForm {
-    constructor(code, expiration, language) {
-        this.code = code;
-        this.expiration = expiration;
-        this.language = language;
-    }
-}
-
-class PasteMystFormJson {
     constructor(code, expiresIn, language) {
         this.code = code;
         this.expiresIn = expiresIn;
@@ -163,12 +138,12 @@ class PasteMystFormJson {
     }
 }
 
-PasteMystFormJson.prototype.toJson = function(form) {
+PasteMystForm.prototype.createForm = function(code, expiresIn, language) {
     return new PasteMystFormJson
     (
-        encodeURI(form.Code),
-        Expiration = form.Expiration.GetStringRepresentation(),
-        Language = form.Language.GetStringRepresentation()
+        encodeURI(code), // if encodeURI is not working, try encodeURIComponent
+        getValidExpiration(expiresIn),
+        getValidLanguage(language)
     );
 };
 
@@ -183,15 +158,15 @@ class PasteMystInfo {
     }
 }
 
-PasteMystInfo.prototype.fromJson = function(json) {
+PasteMystInfo.prototype.createFromResponse = function(response) {
     return new PasteMystInfo
     (
-        json.Id,
-        PasteMystConstants.PmEndpoint + json.Id,
-        DateTimeOffset.FromUnixTimeSeconds(json.Date).DateTime,
-        Uri.UnescapeDataString(json.Code),
-        StringRepresentationExtensions.StringToExpiration(json.Expiration),
-        StringRepresentationExtensions.StringToLanguage(json.Language)
+        response.id,
+        PasteMystConstants.endpoint + response.id,
+        dateFromUnixSeconds(response.createdAt),
+        decodeURI(response.code),
+        response.expiresIn,
+        response.language
     );
 }
 
@@ -200,3 +175,65 @@ PasteMystInfo.prototype.fromJson = function(json) {
 exports.printMsg = function() {
     console.log('This is a message from the demo package');
   }
+
+function getHttpsPostOptions(hostname, path, payload) {
+    return {
+        hostname: hostname,
+        port: 443,
+        path: (path != null ? path : '/'),
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Content-Length': payload.length
+        }
+      };
+}
+
+function getHttpsGetOptions(hostname, path) {
+    return{
+        hostname: hostname,
+        port: 443,
+        path: (path != null ? path : '/'),
+        method: 'GET'
+      };
+}
+
+function dateToUnixSeconds(date) {
+    return date.valueOf() / 1000;
+}
+
+function dateFromUnixSeconds(unixSeconds) {
+    return new Date(unixSeconds * 1000);
+}
+
+exports.postMyst = async function(code, expiration, language) {
+    const form = PasteMystForm.createForm(code, expiration, language);
+    //const json = JSON.stringify(form);
+    const options = {
+        method: 'post', 
+        url: pasteMystUrlInfo.postEndpoint, 
+        responseEncoding: 'utf8', 
+        headers: {
+            'Content-Type': 'application/json'
+        }, 
+        data: form // should we just send the form here?
+    };
+    const response = await axios(options);
+}
+
+exports.getInfo = async function(id) {
+    const response = await axios.get(pasteMystUrlInfo.getEndpoint + id);
+    console.log(response);
+    const pasteMystInfo = PasteMystInfo.createFromResponse(response.data);
+    console.log(pasteMystInfo);
+    return pasteMystInfo;
+}
+
+// Only return a copy of the array to prevent external code from editing the source array
+exports.getLanguageOptions = function() {
+    return validLanguages.slice();
+}
+
+exports.getExpirationOptions = function() {
+    return validExpirations.slice();
+}

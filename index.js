@@ -222,8 +222,15 @@ const discordPMLanguageLookup = {
 
 // Capitalization for language in discord doesn't matter. ```php is as valid as ```pHp
 // Do not use g (global flag) so that only the first complete match including capture groups is returned
+// (instead of all whole match occurrences throughout the text, but without the capture group matches)
 // First capture group is for language detection, second capture group for code block content detection
-const codeBlockRegex = /```([a-zA-Z]+)\s*\n([\s\S]*?)\n```/;
+// The language might not be set in a discord message, so first capture group is optional
+// For str.match expresisons. result[0] is the whole regext match, 
+// result[1] is first capture group match, result[2] is second capture group match etc
+const codeBlockRegex = /```([a-zA-Z]*)\s*\n([\s\S]*?)\n*```/;
+// str.matchAll requires the regex to have the global flag set, otherwise TypeError will be thrown.
+// str.matchAll will also include capture group matches
+const codeBlockRegexMatchAll = /```([a-zA-Z]*)\s*\n([\s\S]*?)\n*```/g;
 
 /**
  * Determine if a value is a String
@@ -235,18 +242,23 @@ function isString(val) {
     return typeof val == 'string' || val instanceof String;
   }
 
-exports.discordToPasteMystLanguage = function(discordLanguage) {
+function discordToPasteMystLanguage(discordLanguage) {
     const pasteMystLanguage = discordPMLanguageLookup[discordLanguage.toLowerCase()];
     return pasteMystLanguage !== undefined ? pasteMystLanguage : 'Unkown';
 }
 
-exports.getLanguageForDiscordCodeMessage = function(message) {
+exports.discordToPasteMystLanguage = discordToPasteMystLanguage;
+
+// getFirstDiscordCodeBlockLanguage and getFirstDiscordCodeBlockContent currently 
+// Only support processing of the first code block of a message with potentially 
+// multiple blocks
+exports.getFirstDiscordCodeBlockLanguage = function(message) {
     if (message != null && isString(message)) {
         const languageCodeMatches = message.match(codeBlockRegex);
-        console.log('getLanguageForDiscordCodeMessage: found languageCodeMatches:');
-        console.log(languageCodeMatches);
-        if (languageCodeMatches && languageCodeMatches.length > 0) {
-            return discordToPasteMystLanguage(languageCodeMatches[0]);
+        //console.log('getFirstDiscordCodeBlockLanguage: found languageCodeMatches:');
+        //console.log(languageCodeMatches);
+        if (languageCodeMatches && languageCodeMatches.length > 1) {
+            return discordToPasteMystLanguage(languageCodeMatches[1]);
         }
     } 
     return 'Unknown';
@@ -255,10 +267,10 @@ exports.getLanguageForDiscordCodeMessage = function(message) {
 exports.getFirstDiscordCodeBlockContent = function(message) {
     if (message != null && isString(message)) {
         const languageCodeMatches = message.match(codeBlockRegex);
-        console.log('getFirstDiscordCodeBlockContent: found languageCodeMatches:');
-        console.log(languageCodeMatches);
-        if (languageCodeMatches && languageCodeMatches.length > 1) {
-            return languageCodeMatches[1];
+        //console.log('getFirstDiscordCodeBlockContent: found languageCodeMatches:');
+        //console.log(languageCodeMatches);
+        if (languageCodeMatches && languageCodeMatches.length > 2) {
+            return languageCodeMatches[2];
         }
     } 
     return '';
@@ -266,6 +278,30 @@ exports.getFirstDiscordCodeBlockContent = function(message) {
 
 exports.containsDiscordCodeBlock = function(message) {
     return message != null && isString(message) && codeBlockRegex.test(message);
+}
+
+exports.getFullCodeBlockInfo = function(message) {
+    let codeBlockInfos = [];
+    if (message != null && isString(message)) {
+        const matches = message.matchAll(codeBlockRegexMatchAll);
+        //console.log('getFullCodeBlockInfo: found matches:');
+        for (const match of matches) {
+            //console.log(match);
+            const matchDetails = getCodeBlockRgxMatchDetail(match);
+            codeBlockInfos.push(matchDetails);
+        }
+    } 
+    return codeBlockInfos;
+}
+
+function getCodeBlockRgxMatchDetail(match) {
+    if (match && match.length > 2) {
+        return {
+            language: discordToPasteMystLanguage(match[1]), 
+            code: match[2]
+        };
+    }
+    return {};
 }
 
 exports.getNextHigherExpiration = function(months, days, hours) {

@@ -76,6 +76,11 @@ const pastemystJs = require('./index'); // Error without the ;
             'messageWithoutCode': messageWithoutCode
         };
 
+        console.log('Discord language to pastemyst language check');
+        // discordToPasteMystLanguage does not handle non string types at the moment
+        const discordLangs = ['cs', 'javascript', 'beta'];
+        discordLangs.map(lang => console.log(`discord language ${lang} is PM language ${pastemystJs.discordToPasteMystLanguage(lang)}`));
+
         console.log('Contains code block test');
         for (const [msgName, msgValue] of Object.entries(testEntryMap)) {
             console.log(`${msgName} contains code block: ${pastemystJs.containsDiscordCodeBlock(msgValue)}`);
@@ -85,13 +90,24 @@ const pastemystJs = require('./index'); // Error without the ;
         
         console.log('Language detection test:');
         for (const [msgName, msgValue] of Object.entries(testEntryMap)) {
-            console.log(`${msgName} has following language: ${pastemystJs.getLanguageForDiscordCodeMessage(msgValue)}`);
+            console.log(`${msgName} has following language: ${pastemystJs.getFirstDiscordCodeBlockLanguage(msgValue)}`);
         }
         console.log('\n');
 
         console.log('Code block detection test:');
         for (const [msgName, msgValue] of Object.entries(testEntryMap)) {
             console.log(`${msgName} has first code block: \n${pastemystJs.getFirstDiscordCodeBlockContent(msgValue)}`);
+        }
+        console.log('\n');
+
+        console.log('Full code block info test:');
+        for (const [msgName, msgValue] of Object.entries(testEntryMap)) {
+            
+            const codeInfos = pastemystJs.getFullCodeBlockInfo(msgValue);
+            console.log(`${msgName} full infos length: ${codeInfos.length}`);
+            for (const info of codeInfos) {
+                console.log(info);
+            }
         }
         console.log('\n');
     };

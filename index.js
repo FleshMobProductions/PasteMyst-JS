@@ -2,7 +2,6 @@ const axios = require("axios")
 
 // https://github.com/CodeMyst/PasteMyst/blob/master/public/languages.txt
 const pasteMystLanguages = {
-    Unknown: 'Unknown', 
     Autodetect: 'autodetect',
     Plaintext: 'plaintext',
     Batch: 'bat',
@@ -42,7 +41,6 @@ const pasteMystLanguages = {
 };
 
 const pasteMystExpiration = {
-    Unknown: 'Unknown', 
     OneHour: '1h' ,
     TwoHours: '2h' ,
     TenHours: '10h' ,
@@ -224,7 +222,8 @@ const discordPMLanguageLookup = {
 
 // Capitalization for language in discord doesn't matter. ```php is as valid as ```pHp
 // Do not use g (global flag) so that only the first complete match including capture groups is returned
-const codeBlockRegex = /```([a-zA-Z]+)\s*\n[\s\S]*?\n```/;
+// First capture group is for language detection, second capture group for code block content detection
+const codeBlockRegex = /```([a-zA-Z]+)\s*\n([\s\S]*?)\n```/;
 
 /**
  * Determine if a value is a String
@@ -243,14 +242,30 @@ exports.discordToPasteMystLanguage = function(discordLanguage) {
 
 exports.getLanguageForDiscordCodeMessage = function(message) {
     if (message != null && isString(message)) {
-        const languages = message.match(codeBlockRegex);
-        console.log('getLanguageForDiscordCodeMessage: found languages:');
-        console.log(languages);
-        if (languages && languages.length > 0) {
-            return discordToPasteMystLanguage(languages[0]);
+        const languageCodeMatches = message.match(codeBlockRegex);
+        console.log('getLanguageForDiscordCodeMessage: found languageCodeMatches:');
+        console.log(languageCodeMatches);
+        if (languageCodeMatches && languageCodeMatches.length > 0) {
+            return discordToPasteMystLanguage(languageCodeMatches[0]);
         }
     } 
     return 'Unknown';
+}
+
+exports.getFirstDiscordCodeBlockContent = function(message) {
+    if (message != null && isString(message)) {
+        const languageCodeMatches = message.match(codeBlockRegex);
+        console.log('getFirstDiscordCodeBlockContent: found languageCodeMatches:');
+        console.log(languageCodeMatches);
+        if (languageCodeMatches && languageCodeMatches.length > 1) {
+            return languageCodeMatches[1];
+        }
+    } 
+    return '';
+}
+
+exports.containsDiscordCodeBlock = function(message) {
+    return message != null && isString(message) && codeBlockRegex.test(message);
 }
 
 exports.getNextHigherExpiration = function(months, days, hours) {
@@ -295,22 +310,37 @@ function getNextHigherExpirationFromHours(expirationHours) {
     const hours1d = 24;
     const hours1m = hours1d * 30;
     const hours1y = hours1m * 12;
-    const validExpirations = [
-        
-        "1h" ,
-        "2h" ,
-        "10h" ,
-        "1d" ,
-        "2d" ,
-        "1w" ,
-        "1m" ,
-        "1y", 
-        "never"
-    ];
+    if (expirationHours > hours1y) {
+        return pasteMystExpiration.Never;
+    }
+    if (expirationHours > hours1m) {
+        return pasteMystExpiration.OneYear;
+    }
+    if (expirationHours > hours1d * 7) {
+        return pasteMystExpiration.OneMonth;
+    }
+    if (expirationHours > hours1d * 2) {
+        return pasteMystExpiration.OneWeek;
+    }
+    if (expirationHours > hours1d) {
+        return pasteMystExpiration.TwoDays;
+    }
+    if (expirationHours > 10) {
+        return pasteMystExpiration.OneDay;
+    }
+    if (expirationHours > 2) {
+        return pasteMystExpiration.TenHours;
+    }
+    if (expirationHours > 1) {
+        return pasteMystExpiration.TwoHours;
+    }
+    return pasteMystExpiration.OneHour;
 }
 
 function getNextLowerExpirationFromHours(expirationHours) {
-    const nextHigherExpiration = getNextHigherExpirationFromHours(expirationHours);
+    // Add a very slight amount of time so that 2hours does not fall into the 1 hours but 2 hours category for example, 
+    // due to how checks in getNextHigherExpirationFromHours are handled
+    const nextHigherExpiration = getNextHigherExpirationFromHours(expirationHours + 0.01);
     return getPreviousExpiration(nextHigherExpiration);
 }
 
@@ -322,11 +352,11 @@ function getPreviousExpiration(expirationStr) {
     if (index == 0) {
         return getMinimumExpiration();
     }
-    return getMinimumExpiration[index - 1];
+    return validExpirations[index - 1];
 }
 
 function getMinimumExpiration() {
-    return validExpirations[0];
+    return pasteMystExpiration.OneHour;
 }
 
 function getValidLanguage(value) {

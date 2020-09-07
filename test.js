@@ -23,6 +23,46 @@ const pastemystJs = require('./index'); // Error without the ;
         console.log(getResponse);
     }
 
+    const testMalformedRequests = async function() {
+        const code = 'let val = { \'key\': \'value\' };'
+        const correctLanguage = pastemystJs.discordToPasteMystLanguage('js');
+        const wrongLanguage = 'jarvorscropt';
+        const correctExpiration = '1h';
+        const wrongExpiration = 'abcd1';
+
+        const logPostResponse = async function(operationName, code, expiration, language) {
+            try {
+                console.log(operationName);
+                const postResponse = await pastemystJs.createPasteMyst(code, expiration, language);
+                console.log(postResponse);
+            }
+            catch (error) {
+                console.log(`operation ${operationName} threw error:`);
+                console.log(error);
+            }
+        }
+
+        // Request with a wrong message will work, because if the message is not detected, it will still default 
+        // to a valid pastemyst language option, like Autodetect
+        await logPostResponse('response Post Myst - wrong language', code, correctExpiration, wrongLanguage);
+        // Requests with invalid expiration strings are expected to fail (status code 400)
+        await logPostResponse('response Post Myst - wrong expiration', code, wrongExpiration, correctLanguage);
+        await logPostResponse('response Post Myst - wrong expiration and language', code, wrongExpiration, wrongLanguage);
+        // Undefined code still works, the content of the myst will then be 'undefined' as string
+        await logPostResponse('response Post Myst - undefined code', undefined, correctExpiration, correctLanguage);
+
+        try {
+            // Requesting a wrong id (resulting in a web request on a non existent url) will return a 404 status code
+            console.log('response Get myst with wrong id');
+            const getResponse = await pastemystJs.getPasteMyst('qwertzuisdfghjkxcvbdfghjfgh');
+            console.log(getResponse);
+        }
+        catch (error) {
+            console.log(error);
+        }
+        
+    }
+
     const testRegexMethods = function() {
         const discordCodeMessage = `Hi, I have a problem
         Here is my code: 
@@ -103,7 +143,7 @@ const pastemystJs = require('./index'); // Error without the ;
         console.log('Full code block info test:');
         for (const [msgName, msgValue] of Object.entries(testEntryMap)) {
             
-            const codeInfos = pastemystJs.getFullCodeBlockInfo(msgValue);
+            const codeInfos = pastemystJs.getFullDiscordCodeBlockInfo(msgValue);
             console.log(`${msgName} full infos length: ${codeInfos.length}`);
             for (const info of codeInfos) {
                 console.log(info);
@@ -145,7 +185,8 @@ const pastemystJs = require('./index'); // Error without the ;
     };
 
     //testMystCreationAndRetrieval();
-    testRegexMethods();
+    testMalformedRequests();
+    //testRegexMethods();
     //testExpirationEstimation();
 
 })();

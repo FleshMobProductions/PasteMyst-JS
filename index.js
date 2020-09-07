@@ -280,7 +280,7 @@ exports.containsDiscordCodeBlock = function(message) {
     return message != null && isString(message) && codeBlockRegex.test(message);
 }
 
-exports.getFullCodeBlockInfo = function(message) {
+exports.getFullDiscordCodeBlockInfo = function(message) {
     let codeBlockInfos = [];
     if (message != null && isString(message)) {
         const matches = message.matchAll(codeBlockRegexMatchAll);
@@ -395,22 +395,23 @@ function getMinimumExpiration() {
     return pasteMystExpiration.OneHour;
 }
 
+// language will default to pasteMystLanguages.Autodetect if no valid language is specified
 function getValidLanguage(value) {
-    return getValidKeyword(value, validLanguages);
+    return getValidKeyword(value, validLanguages, pasteMystLanguages.Autodetect);
 }
 
 function getValidExpiration(value) {
-    return getValidKeyword(value, validExpirations);
+    return getValidKeyword(value, validExpirations, 'Unknown');
 }
 
-function getValidKeyword(value, keywords) {
+function getValidKeyword(value, keywords, defaultValue) {
     if (value != null) {
         const lowerValue = value.toLowerCase();
         if (keywords.indexOf(lowerValue) >= 0) {
             return lowerValue;
         }
     }
-    return "Unknown";
+    return defaultValue;
 }
 
 const pasteMystUrlInfo = {
@@ -484,26 +485,59 @@ exports.createPasteMyst = async function(code, expiration, language) {
         headers: {
             'Content-Type': 'application/json'
         }, 
-        data: json // should we just send the form here?
+        data: json
     };
     console.log(options);
-    const response = await axios(options)
-    .catch(err => console.log(`post error: ${err}`));
-    console.log('response');
-    console.log(response);
-    const pasteMystInfo = createPasteMystInfoFromResponse(response.data);
-    console.log('pasteMystInfo');
-    console.log(pasteMystInfo);
-    return pasteMystInfo;
+    const axiosRequest = axios(options)
+    return await handleAxiosRequestAndCreateMyst(axiosRequest);
 }
 
 exports.getPasteMyst = async function(id) {
     console.log(`getInfo: id: ${id}`);
-    const response = await axios.get(pasteMystUrlInfo.getEndpoint + id);
-    console.log(response);
-    const pasteMystInfo = createPasteMystInfoFromResponse(response.data);
-    console.log(pasteMystInfo);
-    return pasteMystInfo;
+    const axiosRequest = axios.get(pasteMystUrlInfo.getEndpoint + id);
+    return await handleAxiosRequestAndCreateMyst(axiosRequest);
+}
+
+async function handleAxiosRequestAndCreateMyst(axiosRequest) {
+    let response;
+    try {
+        response = await axiosRequest;
+        // console.log('response');
+        // console.log(response);
+    }
+    catch (error) {
+        throw error;
+    }
+    if (!validateResponseData(response.data)) {
+        const malformMessage = getMalformedResponseDataMessage(response.data);
+        throw `Response received, but malformed: ${malformMessage}`;
+    }
+    try {
+        const pasteMystInfo = createPasteMystInfoFromResponse(response.data);
+        // console.log('pasteMystInfo');
+        // console.log(pasteMystInfo);
+        return pasteMystInfo;
+    }
+    catch (dataParseError) {
+        throw `Response received, error trying to create PasteMystInfo from it: ${dataParseError}`
+    }
+}
+
+const requiredResponseDataAttributes = [
+    'id', 
+    'createdAt', 
+    'code', 
+    'expiresIn', 
+    'language'
+];
+
+function validateResponseData(responseData) {
+    return responseData != null 
+    && requiredResponseDataAttributes.every(attribute => responseData[attribute] !== undefined)
+}
+
+function getMalformedResponseDataMessage(responseData) {
+    return `Expected response data object to have keys ${requiredResponseDataAttributes}\nActual response data: ${String(responseData)}`;
 }
 
 // Return a copy of the array to prevent external code from editing the source array

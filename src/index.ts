@@ -195,11 +195,11 @@ const codeBlockRegexMatchAll = /```([a-zA-Z]*)\s*\n([\s\S]*?)\n*```/g;
  * @param {Object} val The value to test
  * @returns {boolean} True if value is a String, otherwise false
  */
-function isString(val) {
+function isString(val:any) {
     return typeof val == 'string' || val instanceof String;
   }
 
-function discordToPasteMystLanguage(discordLanguage) {
+function discordToPasteMystLanguage(discordLanguage:string) {
     const pasteMystLanguage = discordPMLanguageLookup[discordLanguage.toLowerCase()];
     return pasteMystLanguage !== undefined ? pasteMystLanguage : 'Unkown';
 }

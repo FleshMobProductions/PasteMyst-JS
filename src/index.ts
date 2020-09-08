@@ -1,7 +1,11 @@
 const axios = require("axios")
 
+interface StringValueObject {
+  [key:string]:string
+}
+
 // https://github.com/CodeMyst/PasteMyst/blob/master/public/languages.txt
-const pasteMystLanguages = {
+const pasteMystLanguages:StringValueObject  = {
     Autodetect: 'autodetect',
     Plaintext: 'plaintext',
     Batch: 'bat',
@@ -40,7 +44,7 @@ const pasteMystLanguages = {
     Yaml: 'yaml'
 };
 
-const pasteMystExpiration = {
+const pasteMystExpiration:StringValueObject  = {
     OneHour: '1h' ,
     TwoHours: '2h' ,
     TenHours: '10h' ,
@@ -70,7 +74,7 @@ const validExpirations = [
 // Discord uses highlight.js
 // https://github.com/highlightjs/highlight.js/blob/master/SUPPORTED_LANGUAGES.md
 // ToDo: Reference for future rewrite: https://github.com/CodeMyst/pastemyst-v2/blob/master/data/languages.json
-const discordPMLanguageLookup = {
+const discordPMLanguageLookup:StringValueObject = {
     'plaintext': 'plaintext',
     'txt': 'plaintext',
     'text': 'plaintext',
@@ -209,7 +213,7 @@ exports.discordToPasteMystLanguage = discordToPasteMystLanguage;
 // getFirstDiscordCodeBlockLanguage and getFirstDiscordCodeBlockContent currently 
 // Only support processing of the first code block of a message with potentially 
 // multiple blocks
-exports.getFirstDiscordCodeBlockLanguage = function(message) {
+exports.getFirstDiscordCodeBlockLanguage = function(message:string) {
     if (message != null && isString(message)) {
         const languageCodeMatches = message.match(codeBlockRegex);
         //console.log('getFirstDiscordCodeBlockLanguage: found languageCodeMatches:');
@@ -221,7 +225,7 @@ exports.getFirstDiscordCodeBlockLanguage = function(message) {
     return 'Unknown';
 }
 
-exports.getFirstDiscordCodeBlockContent = function(message) {
+exports.getFirstDiscordCodeBlockContent = function(message:string) {
     if (message != null && isString(message)) {
         const languageCodeMatches = message.match(codeBlockRegex);
         //console.log('getFirstDiscordCodeBlockContent: found languageCodeMatches:');
@@ -233,11 +237,11 @@ exports.getFirstDiscordCodeBlockContent = function(message) {
     return '';
 }
 
-exports.containsDiscordCodeBlock = function(message) {
+exports.containsDiscordCodeBlock = function(message:string) {
     return message != null && isString(message) && codeBlockRegex.test(message);
 }
 
-exports.getFullDiscordCodeBlockInfo = function(message) {
+exports.getFullDiscordCodeBlockInfo = function(message:string) {
     let codeBlockInfos = [];
     if (message != null && isString(message)) {
         const matches = message.matchAll(codeBlockRegexMatchAll);
@@ -251,7 +255,7 @@ exports.getFullDiscordCodeBlockInfo = function(message) {
     return codeBlockInfos;
 }
 
-function getCodeBlockRgxMatchDetail(match) {
+function getCodeBlockRgxMatchDetail(match:RegExpMatchArray) {
     if (match && match.length > 2) {
         return {
             language: discordToPasteMystLanguage(match[1]), 
@@ -261,31 +265,31 @@ function getCodeBlockRgxMatchDetail(match) {
     return {};
 }
 
-exports.getNextHigherExpiration = function(months, days, hours) {
+exports.getNextHigherExpiration = function(months:number, days:number, hours:number) {
     const expirationHours = getHours(months, days, hours);
     return getNextHigherExpirationFromHours(expirationHours);
 }
 
-exports.getNextHigherExpirationFromSeconds = function(expirationSeconds) {
+exports.getNextHigherExpirationFromSeconds = function(expirationSeconds:number) {
     const expirationHours = secondsToHours(expirationSeconds);
     return getNextHigherExpirationFromHours(expirationHours);
 }
 
-exports.getNextLowerExpiration = function(months, days, hours) {
+exports.getNextLowerExpiration = function(months:number, days:number, hours:number) {
     const expirationHours = getHours(months, days, hours);
     return getNextLowerExpirationFromHours(expirationHours);
 }
 
-exports.getNextLowerExpirationFromSeconds = function(expirationSeconds) {
+exports.getNextLowerExpirationFromSeconds = function(expirationSeconds:number) {
     const expirationHours = secondsToHours(expirationSeconds);
     return getNextLowerExpirationFromHours(expirationHours);
 }
 
-function secondsToHours(seconds) {
+function secondsToHours(seconds:number) {
     return seconds / 3600;
 }
 
-function getHours(months, days, hours) {
+function getHours(months:number, days:number, hours:number) {
     if (months == undefined) {
         months = 0;
     }
@@ -299,7 +303,7 @@ function getHours(months, days, hours) {
     return months * 720 + days * 24 + hours;
 }
 
-function getNextHigherExpirationFromHours(expirationHours) {
+function getNextHigherExpirationFromHours(expirationHours:number) {
     const hours1d = 24;
     const hours1m = hours1d * 30;
     const hours1y = hours1m * 12;
@@ -330,14 +334,14 @@ function getNextHigherExpirationFromHours(expirationHours) {
     return pasteMystExpiration.OneHour;
 }
 
-function getNextLowerExpirationFromHours(expirationHours) {
+function getNextLowerExpirationFromHours(expirationHours:number) {
     // Add a very slight amount of time so that 2hours does not fall into the 1 hours but 2 hours category for example, 
     // due to how checks in getNextHigherExpirationFromHours are handled
     const nextHigherExpiration = getNextHigherExpirationFromHours(expirationHours + 0.01);
     return getPreviousExpiration(nextHigherExpiration);
 }
 
-function getPreviousExpiration(expirationStr) {
+function getPreviousExpiration(expirationStr:string) {
     let index = validExpirations.indexOf(expirationStr);
     if (index < 0) {
         return 'never';
@@ -353,15 +357,15 @@ function getMinimumExpiration() {
 }
 
 // language will default to pasteMystLanguages.Autodetect if no valid language is specified
-function getValidLanguage(value) {
+function getValidLanguage(value:string) {
     return getValidKeyword(value, validLanguages, pasteMystLanguages.Autodetect);
 }
 
-function getValidExpiration(value) {
+function getValidExpiration(value:string) {
     return getValidKeyword(value, validExpirations, 'Unknown');
 }
 
-function getValidKeyword(value, keywords, defaultValue) {
+function getValidKeyword(value:string, keywords:string[], defaultValue:string) {
     if (value != null) {
         const lowerValue = value.toLowerCase();
         if (keywords.indexOf(lowerValue) >= 0) {
@@ -378,14 +382,18 @@ const pasteMystUrlInfo = {
 };
 
 class PasteMystForm {
-    constructor(code, expiresIn, language) {
+  code: string;
+  expiresIn: string;
+  language: string;
+
+    constructor(code:string, expiresIn:string, language:string) {
         this.code = code;
         this.expiresIn = expiresIn;
         this.language = language;
     }
 }
 
-function createForm(code, expiresIn, language) {
+function createForm(code:string, expiresIn:string, language:string) {
     return new PasteMystForm
     (
         encodeURI(code), 
@@ -395,7 +403,14 @@ function createForm(code, expiresIn, language) {
 };
 
 class PasteMystInfo {
-    constructor(id, link, date, code, expiration, language) {
+  id: string;
+  link: string;
+  date: Date;
+  code: string;
+  expiration: string;
+  language: string;
+  
+    constructor(id: string, link: string, date: Date, code: string, expiration: string, language: string) {
         this.id = id;
         this.link = link;
         this.date = date;
@@ -405,7 +420,7 @@ class PasteMystInfo {
     }
 }
 
-function createPasteMystInfoFromResponse(response) {
+function createPasteMystInfoFromResponse(response:PMServerResponse) {
     return new PasteMystInfo
     (
         response.id,
@@ -417,20 +432,20 @@ function createPasteMystInfoFromResponse(response) {
     );
 }
 
-function utcDateFromUnixSeconds(unixSeconds) {
+function utcDateFromUnixSeconds(unixSeconds:number) {
     return new Date(unixSeconds * 1000);
 }
 
-function localDateFromUnixSeconds(unixSeconds) {
+function localDateFromUnixSeconds(unixSeconds:number) {
     return convertUTCDateToLocalDate(utcDateFromUnixSeconds(unixSeconds));
 }
 
-function convertUTCDateToLocalDate(date) {
+function convertUTCDateToLocalDate(date:Date) {
     var newDate = new Date(date.getTime() - date.getTimezoneOffset()*60*1000);
     return newDate;   
 }
 
-exports.createPasteMyst = async function(code, expiration, language) {
+exports.createPasteMyst = async function(code:string, expiration:string, language:string) {
     console.log(`postMyst: code: ${code}, expiration: ${expiration}, language: ${language}`);
     const form = createForm(code, expiration, language);
     const json = JSON.stringify(form);
@@ -448,13 +463,13 @@ exports.createPasteMyst = async function(code, expiration, language) {
     return await handleAxiosRequestAndCreateMyst(axiosRequest);
 }
 
-exports.getPasteMyst = async function(id) {
+exports.getPasteMyst = async function(id:string) {
     console.log(`getInfo: id: ${id}`);
     const axiosRequest = axios.get(pasteMystUrlInfo.getEndpoint + id);
     return await handleAxiosRequestAndCreateMyst(axiosRequest);
 }
 
-async function handleAxiosRequestAndCreateMyst(axiosRequest) {
+async function handleAxiosRequestAndCreateMyst(axiosRequest:any) {
     let response;
     try {
         response = await axiosRequest;
@@ -475,6 +490,14 @@ async function handleAxiosRequestAndCreateMyst(axiosRequest) {
     }
 }
 
+interface PMServerResponse {
+  id: string;
+  createdAt: number;
+  code: string;
+  expiresIn: string;
+  language: string;
+}
+
 const requiredResponseDataAttributes = [
     'id', 
     'createdAt', 
@@ -483,12 +506,12 @@ const requiredResponseDataAttributes = [
     'language'
 ];
 
-function validateResponseData(responseData) {
+function validateResponseData(responseData:any) {
     return responseData != null 
     && requiredResponseDataAttributes.every(attribute => responseData[attribute] !== undefined)
 }
 
-function getMalformedResponseDataMessage(responseData) {
+function getMalformedResponseDataMessage(responseData:any) {
     return `Expected response data object to have keys ${requiredResponseDataAttributes}\nActual response data: ${String(responseData)}`;
 }
 

@@ -244,8 +244,10 @@ exports.getFullDiscordCodeBlockInfo = function(message) {
         //console.log('getFullCodeBlockInfo: found matches:');
         for (const match of matches) {
             //console.log(match);
-            const matchDetails = getCodeBlockRgxMatchDetail(match);
-            codeBlockInfos.push(matchDetails);
+            if (match) {
+                const matchDetails = getCodeBlockRgxMatchDetail(match);
+                codeBlockInfos.push(matchDetails);
+            }
         }
     } 
     return codeBlockInfos;

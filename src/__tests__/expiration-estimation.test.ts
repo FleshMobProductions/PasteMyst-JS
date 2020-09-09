@@ -123,7 +123,7 @@ describe('Regex Method tests', () => {
     console.log('Discord language to pastemyst language check');
     // discordToPasteMystLanguage does not handle non string types at the moment
   
-  const defaultPMLanguage = 'autodetect';
+  const defaultPMLanguage = 'Unknown';
   
   test(`discordToPasteMystLanguage: Unknown discord language returns ${defaultPMLanguage} PM language`, () => {
     expect(pastemystJs.discordToPasteMystLanguage('Some nonexisting language')).toBe(defaultPMLanguage)

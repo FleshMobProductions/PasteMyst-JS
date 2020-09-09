@@ -1,11 +1,7 @@
 /// <reference path="../index.ts" />
-import { CodeBlockMatchResult } from "../index";
+//import { CodeBlockMatchResult } from "../index";
 
 const pastemystJs = require('./../index');
-
-interface TimeInputResultObj {
-  [key:string]:[number, string, string]
-}
 
 describe('Expiration Estimation test:', () => {
   const seconds1h = 60 * 60;
@@ -15,7 +11,7 @@ describe('Expiration Estimation test:', () => {
 
   // Second tuple value describes the getNextLowerExpirationFromSeconds expected value
   // Third tuple value describes the getNextHigherExpirationFromSeconds expected value
-  const testEntryMap:TimeInputResultObj & object = {
+  const testEntryMap:{[key:string]:[number, string, string]} & object = {
       '0.5 hours':[seconds1h * 0.5, '1h', '1h'], 
       '1 hours': [seconds1h, '1h', '1h'], 
       '2 hours': [seconds1h * 2, '2h', '2h'], 
@@ -77,15 +73,14 @@ describe('Malformed Requests test', () => {
   const correctExpiration = '1h';
   const wrongExpiration = 'abcd1';
 
-  const postPasteMyst = async function (code, expiration, language) {
+  const postPasteMyst = async function (code:string|null|undefined, expiration:string, language:string) {
     return await pastemystJs.createPasteMyst(code, expiration, language);
   }
 
   // Request with a wrong message will work, because if the message is not detected, it will still default 
   // to a valid pastemyst language option, like Autodetect
-  test.concurrent('posting Myst with wrong language creates Myst with autodetect language', async () => {
-    const response = await postPasteMyst(code, correctExpiration, wrongLanguage);
-    expect(response.language).toBe('autodetect');
+  test.concurrent('posting Myst with wrong language will use valid default language and successfully create Myst', async () => {
+    await expect(postPasteMyst(code, correctExpiration, wrongLanguage)).resolves.toBeDefined();
   });
   // Requests with invalid expiration strings are expected to fail (status code 400)
   test.concurrent('posting Myst with wrong expiration throws error', async () => {
@@ -105,9 +100,16 @@ describe('Malformed Requests test', () => {
   });  
 });
 
+interface CodeBlockMatchInput {
+  language: string|null|undefined;
+  code: string|null|undefined;
+  hasCodeBlock: boolean;
+}
+
 interface DiscordCodeMessage {
-  content?: string;
-  regexResults: CodeBlockMatchResult[];
+  content: string|null|undefined;
+  expectedCodeBlockCount: number;
+  regexResults: CodeBlockMatchInput[];
 }
 
 describe('Regex Method tests', () => {
@@ -115,80 +117,130 @@ describe('Regex Method tests', () => {
   var matches = value.match(reg);
   console.log(matches[0]);`;
 
-  const discordCodeMessage: DiscordCodeMessage = {
+  const discordCodeMessageNoLang: DiscordCodeMessage = {
+    content: (`Hi, I have a problem
+    Here is my code: 
+    
+    \`\`\`\n`
+      + codeBlock1
+      + `\n\`\`\``),
+    expectedCodeBlockCount: 1,
+    regexResults: [{
+      code: codeBlock1,
+      language: 'autodetect',
+      hasCodeBlock: true
+    }]
+  };
+
+  const discordCodeMessageNoBreaks: DiscordCodeMessage = {
     content: (`Hi, I have a problem
     Here is my code: 
     
     \`\`\``
       + codeBlock1
       + `\`\`\``),
+    expectedCodeBlockCount: 1,
     regexResults: [{
       code: codeBlock1,
-      language: 'autodetect'
+      language: 'autodetect',
+      hasCodeBlock: true
     }]
   };
   
   // Copy first message but append text after the code block: 
-  const discordMessageAfterCodeAppend: DiscordCodeMessage = JSON.parse(JSON.stringify(discordCodeMessage));
+  const discordMessageAfterCodeAppend: DiscordCodeMessage = JSON.parse(JSON.stringify(discordCodeMessageNoBreaks));
   discordMessageAfterCodeAppend.content += '\nDoes someone know why I get a null reference exception for matches[0]?';
 
-  const codeBlock2 = `<?php echo 'test' ?>`;
+  const codeBlockPHP = `<?php echo 'test' ?>`;
 
   const discordMessageLangSingleUppercase: DiscordCodeMessage = {
     content: (`
     problem: 
-    \`\`\`PHP`
-      + codeBlock2
-      + `\`\`\``),
+    \`\`\`PHP\n`
+      + codeBlockPHP
+      + `\n\`\`\``),
+    expectedCodeBlockCount: 1,
     regexResults: [{
-      code: codeBlock2, 
-      language: 'php'
+      code: codeBlockPHP,
+      language: 'php',
+      hasCodeBlock: true
     }]
   };
 
-    const discordMessageLangSingle = `
-    problem: 
-    \`\`\`PHP
-    <?php echo 'test' ?>
-    \`\`\`
-    `;
+  const codeBlockJS = `console.log(obj1);
+  alert(obj2.value);`;
 
-    const discordMessageLangDouble = discordMessageLangSingle + 
-    `
-    problem 2: 
-    \`\`\`js
-    console.log(obj1);
-    alert(obj2.value);
-    \`\`\`
-    `;
+  const discordMessageLangDouble: DiscordCodeMessage = JSON.parse(JSON.stringify(discordMessageLangSingleUppercase));
+  discordMessageLangDouble.content += (`
+  problem 2: 
+  \`\`\`js \n`
+    + codeBlockJS
+    + `\n\`\`\``);
+  discordMessageLangDouble.expectedCodeBlockCount = 2;
+  discordMessageLangDouble.regexResults.push({
+    language: 'javascript',
+    code: codeBlockJS,
+    hasCodeBlock: true
+  });
 
-    const discordMessageInlineCode = `
-    Here we have \`unrecognized inlined code\`. This was a test
-    `;
+  const discordMessageInlineCode: DiscordCodeMessage = {
+    content: `
+      Here we have \`unrecognized inlined code\`. This was a test
+      `,
+    expectedCodeBlockCount: 0,
+    regexResults: [{
+      code: null,
+      language: null,
+      hasCodeBlock: false
+    }]
+  };
 
-    const messageWithoutCode = `
+  const messageWithoutCode: DiscordCodeMessage = {
+    content: `
     Hey, you. You're finally awake.
-    You were trying to cross the border, right? 
-    Walked right into that Imperial ambush, same as us, and that thief over there. 
-    Damn you Stormcloaks. Skyrim was fine until you came along. Empire was nice and lazy. 
-    If they hadn't been looking for you, I could've stolen that horse and be halfway to Hammerfell. 
-    You there. You and me - we shouldn't be here. It's these Stormcloaks the Empire wants.
-    `;
+    You were trying to cross the border, right?`,
+    expectedCodeBlockCount: 0,
+    regexResults: [{
+      code: null,
+      language: null,
+      hasCodeBlock: false
+    }]
+  };
 
-    const testEntryMap = {
-        'undefined':undefined, 
-        'null': null, 
-        'number': 34, 
-        'discordCodeMsgNoLang': discordCodeMessage, 
-        'discordCodeMsgNoLangAfterCodeAppend': discordMessageAfterCodeAppend, 
-        'discordMessageLangSinglePHP': discordMessageLangSingle, 
-        'discordMessageLangDoublePHP_JS': discordMessageLangDouble, 
-        'discordMessageInlineCode': discordMessageInlineCode, 
-        'messageWithoutCode': messageWithoutCode
-    };
+  const messageNull: DiscordCodeMessage = {
+    content: null,
+    expectedCodeBlockCount: 0,
+    regexResults: [{
+      code: null,
+      language: null,
+      hasCodeBlock: false
+    }]
+  };
 
-    console.log('Discord language to pastemyst language check');
-    // discordToPasteMystLanguage does not handle non string types at the moment
+  const messageUndefined: DiscordCodeMessage = {
+    content: undefined,
+    expectedCodeBlockCount: 0,
+    regexResults: [{
+      code: null,
+      language: null,
+      hasCodeBlock: false
+    }]
+  };
+
+  const testEntryMap: { [key: string]: DiscordCodeMessage } = {
+    'undefined': messageUndefined,
+    'null': messageNull,
+    'discord Code Msg No Lang': discordCodeMessageNoLang,
+    'discord Code Msg No Lang No Line Breaks': discordCodeMessageNoBreaks,
+    'discord Code Msg No Lang No Line Breaks After Code Append': discordMessageAfterCodeAppend,
+    'discord Message Lang Single PHP': discordMessageLangSingleUppercase,
+    'discord Message Lang Double PHP_JS': discordMessageLangDouble,
+    'discord Message Inline Code': discordMessageInlineCode,
+    'message Without Code': messageWithoutCode
+  };
+
+  console.log('Discord language to pastemyst language check');
+  // discordToPasteMystLanguage does not handle non string types at the moment
   
   const defaultPMLanguage = 'Unknown';
   
@@ -197,7 +249,7 @@ describe('Regex Method tests', () => {
   })
   
   const langTestInputToResults: [string, string][] = [
-    ['cs', 'csharp'], 
+    ['cs', 'csharp'],
     ['javascript', 'javascript']
   ];
   
@@ -205,34 +257,43 @@ describe('Regex Method tests', () => {
     expect(pastemystJs.discordToPasteMystLanguage(discordLanguage)).toBe(pmLanguage);
   })
 
-    console.log('Contains code block test');
+  describe('containsDiscordCodeBlock for', () => {
     for (const [msgName, msgValue] of Object.entries(testEntryMap)) {
-        console.log(`${msgName} contains code block: ${pastemystJs.containsDiscordCodeBlock(msgValue)}`);
+      test(`${msgName} should contain code block: ${msgValue.regexResults[0].hasCodeBlock}`, () => {
+        expect(pastemystJs.containsDiscordCodeBlock(msgValue.content)).toBe(msgValue.regexResults[0].hasCodeBlock);
+      });
     }
-    console.log('\n');
+  });
 
+  describe('getFirstDiscordCodeBlockLanguage for', () => {
+    for (const [msgName, msgValue] of Object.entries(testEntryMap)) {
+      test(`${msgName} should be: ${msgValue.regexResults[0].language}`, () => {
+        expect(pastemystJs.getFirstDiscordCodeBlockLanguage(msgValue.content)).toBe(msgValue.regexResults[0].language);
+      });
+    }
+  });
+
+  describe('getFirstDiscordCodeBlockContent for', () => {
+    for (const [msgName, msgValue] of Object.entries(testEntryMap)) {
+      test(`${msgName} should be: ${msgValue.regexResults[0].code}`, () => {
+        expect(pastemystJs.getFirstDiscordCodeBlockContent(msgValue.content)).toBe(msgValue.regexResults[0].code);
+      });
+    }
+  });
     
-    console.log('Language detection test:');
+  describe('getFullDiscordCodeBlockInfo for', () => {
     for (const [msgName, msgValue] of Object.entries(testEntryMap)) {
-        console.log(`${msgName} has following language: ${pastemystJs.getFirstDiscordCodeBlockLanguage(msgValue)}`);
-    }
-    console.log('\n');
-
-    console.log('Code block detection test:');
-    for (const [msgName, msgValue] of Object.entries(testEntryMap)) {
-        console.log(`${msgName} has first code block: \n${pastemystJs.getFirstDiscordCodeBlockContent(msgValue)}`);
-    }
-    console.log('\n');
-
-    console.log('Full code block info test:');
-    for (const [msgName, msgValue] of Object.entries(testEntryMap)) {
-        
-        const codeInfos = pastemystJs.getFullDiscordCodeBlockInfo(msgValue);
-        console.log(`${msgName} full infos length: ${codeInfos.length}`);
-        for (const info of codeInfos) {
-            console.log(info);
+      test(`${msgName} should return ${msgValue.expectedCodeBlockCount} entries with correct values`, () => {
+        const codeBlockInfos = pastemystJs.getFullDiscordCodeBlockInfo(msgValue.content);
+        console.log(codeBlockInfos);
+        expect(codeBlockInfos.length).toBe(msgValue.expectedCodeBlockCount);
+        if (codeBlockInfos.length >= msgValue.expectedCodeBlockCount) {
+          for (let index = 0; index < msgValue.expectedCodeBlockCount; index++) {
+            expect(codeBlockInfos[index].language).toBe(msgValue.regexResults[index].language);
+            expect(codeBlockInfos[index].code).toBe(msgValue.regexResults[index].code);
+          }
         }
+      });
     }
-    console.log('\n');
-
-})
+  });
+});

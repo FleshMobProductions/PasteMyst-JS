@@ -190,10 +190,13 @@ const discordPMLanguageLookup:StringValueObject = {
 // The language might not be set in a discord message, so first capture group is optional
 // For str.match expresisons. result[0] is the whole regext match, 
 // result[1] is first capture group match, result[2] is second capture group match etc
-const codeBlockRegex = /```([a-zA-Z]*)\s*\n([\s\S]*?)\n*```/;
+// When the language is not specified, there will be no matched language and the code block is the first capture group
+// To make sure there is always at least one matched capture group, we require the code block to have some content, 
+// so there needs to be at least one character in a code block
+const codeBlockRegex = /```([a-zA-Z]*)\s*\n([\s\S]+?)\n*```/;
 // str.matchAll requires the regex to have the global flag set, otherwise TypeError will be thrown.
 // str.matchAll will also include capture group matches
-const codeBlockRegexMatchAll = /```([a-zA-Z]*)\s*\n([\s\S]*?)\n*```/g;
+const codeBlockRegexMatchAll = /```([a-zA-Z]*)\s*\n([\s\S]+?)\n*```/g;
 
 /**
  * Determine if a value is a String
@@ -246,11 +249,29 @@ exports.getFirstDiscordCodeBlockLanguage = function(message:string):string|null 
         const languageCodeMatches = message.match(codeBlockRegex);
         //console.log('getFirstDiscordCodeBlockLanguage: found languageCodeMatches:');
         //console.log(languageCodeMatches);
-        if (languageCodeMatches && languageCodeMatches.length > 1) {
-            return discordToPasteMystLanguage(languageCodeMatches[1]);
+        if (languageCodeMatches) {
+            const discordLanguage = getDiscordCodeLanguageFromMatch(languageCodeMatches);
+            return discordToPasteMystLanguage(discordLanguage);
         }
     } 
     return null;
+}
+
+function getDiscordCodeLanguageFromMatch(match: RegExpMatchArray) {
+    // match array should at least have a length of 3, meaning 2 capture groups is matched, 
+    // then the first capture group (index 1) is the languge. If the length is 2 and 
+    // only one capture group is matched, this means that we only found a code block and no language
+    const discordLanguage = match.length >= 3 ? match[1] : '';
+    return discordLanguage;
+}
+
+function getDiscordCodeBlockBodyFromMatch(match: RegExpMatchArray) {
+    // match array should at least have a length of 3, meaning 2 capture groups is matched, 
+    // then the second capture group (index 2) is the languge. If the length is 2 and 
+    // only one capture group is matched, this means that we only found a code block and no language, 
+    // so the first capture group (index 1) is the code block content
+    const discordCodeBlock = match.length >= 3 ? match[2] :  match[1];
+    return discordCodeBlock;
 }
 
 /**
@@ -267,8 +288,9 @@ exports.getFirstDiscordCodeBlockContent = function(message:string):string|null {
         const languageCodeMatches = message.match(codeBlockRegex);
         //console.log('getFirstDiscordCodeBlockContent: found languageCodeMatches:');
         //console.log(languageCodeMatches);
-        if (languageCodeMatches && languageCodeMatches.length > 2) {
-            return languageCodeMatches[2];
+        if (languageCodeMatches) {
+            const discordCodeBlock = getDiscordCodeBlockBodyFromMatch(languageCodeMatches);
+            return discordCodeBlock;
         }
     } 
     return null;
@@ -287,6 +309,9 @@ exports.containsDiscordCodeBlock = function(message:string):boolean {
     return message != null && isString(message) && codeBlockRegex.test(message);
 }
 
+// ToDo: what if the language was not defined for the code block, will we still get a second match? how can we ensure that? 
+// If there is only one match, that must mean that the match is the code and not the language, so make sure that the 
+// code match can never be omitted
 /**
  * Returns an array with PasteMyst relevant information for all code blocks in a discord message
  * 
@@ -317,10 +342,11 @@ export interface CodeBlockMatchResult {
   code: string;
 }
 
-function getCodeBlockRgxMatchDetail(match:RegExpMatchArray):CodeBlockMatchResult {
+function getCodeBlockRgxMatchDetail(match: RegExpMatchArray): CodeBlockMatchResult {
+    const discordLanguage = getDiscordCodeLanguageFromMatch(match);
     return {
-        language: discordToPasteMystLanguage(match[1]), 
-        code: match[2]
+        language: discordToPasteMystLanguage(discordLanguage), 
+        code: getDiscordCodeBlockBodyFromMatch(match)
     };
 }
 

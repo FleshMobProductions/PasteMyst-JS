@@ -207,15 +207,19 @@ function isString(val:any) {
 
 /**
  * Tries to convert the specified discord code block language into a 
- * valid PasteMyst language. If no matching language was found, will return 'autodetect'. 
- * Discord uses highlight.js, as such, the conversion should work 
+ * valid PasteMyst language. If no matching language was found, will return 'autodetect'
+ * 
+ * @remarks 
+ * Discord uses highlight.js, as such, the conversion should work for highlight.js language 
+ * keywords that related to one of the accepted languages of PasteMyst v1, a list of which can 
+ * be seen {@link https://github.com/CodeMyst/PasteMyst/blob/master/public/languages.txt | here}. 
  * 
  * @param discordLanguage - The specified code language (case insensitive) in the discord message 
  * (values that follow the initial ``` and work for highlighting syntax in a code block)
  * @returns A valid PasteMyst language
  */
 function discordToPasteMystLanguage(discordLanguage:string) {
-    const pasteMystLanguage = discordPMLanguageLookup[discordLanguage.toLowerCase()];
+    const pasteMystLanguage = discordPMLanguageLookup[discordLanguage.toLowerCase().trim()];
     return pasteMystLanguage !== undefined ? pasteMystLanguage : pasteMystDefaultLanguage;
 }
 
@@ -225,7 +229,14 @@ exports.discordToPasteMystLanguage = discordToPasteMystLanguage;
 // Only support processing of the first code block of a message with potentially 
 // multiple blocks
 /**
- * Converts the discord 
+ * Converts the specified language of the first code block of a 
+ * discord into the matching valid PasteMyst language and returns it. 
+ * If no code block exists in the message, null will be returned. 
+ * If a code block exists but either no language was defined, or 
+ * no matching PasteMyst language was found, 'autodetect' is returned. 
+ * 
+ * @remarks
+ * discord code blocks start and end with ```
  * 
  * @param message - The discord message
  * @returns The first code block string if one is available, otherwise null
@@ -243,7 +254,10 @@ exports.getFirstDiscordCodeBlockLanguage = function(message:string):string|null 
 }
 
 /**
- * Returns the value of the first code block of a discord message, starting and ending with ```
+ * Returns the body of the first code block of a discord message, If one is available
+ * 
+ * @remarks
+ * discord code blocks start and end with ```
  * 
  * @param message - The Discord message
  * @returns The first code block string if one is available, otherwise null
@@ -261,7 +275,10 @@ exports.getFirstDiscordCodeBlockContent = function(message:string):string|null {
 }
 
 /**
- * Checks if a discord message contains at least 1 code block, starting and ending with ```
+ * Checks if a discord message contains at least 1 code block
+ * 
+ * @remarks
+ * discord code blocks start and end with ```
  * 
  * @param message - The Discord message
  * @returns true if a codeblock was found, otherwise false
@@ -271,8 +288,10 @@ exports.containsDiscordCodeBlock = function(message:string):boolean {
 }
 
 /**
- * Returns an array with PasteMyst relevant information for all code blocks in a discord message, 
- * (which starting and ending with ```)
+ * Returns an array with PasteMyst relevant information for all code blocks in a discord message
+ * 
+ * @remarks
+ * discord code blocks start and end with ```
  * 
  * @param message - The Discord message
  * @returns An array of objects with the keys 'language' for the PasteMyst compatible language and 'code' for the code block content
@@ -293,7 +312,7 @@ exports.getFullDiscordCodeBlockInfo = function(message:string):CodeBlockMatchRes
     return codeBlockInfos;
 }
 
-interface CodeBlockMatchResult {
+export interface CodeBlockMatchResult {
   language: string;
   code: string;
 }
@@ -474,7 +493,7 @@ function createForm(code:string, expiresIn:string, language:string) {
     );
 };
 
-class PasteMystInfo {
+export class PasteMystInfo {
   id: string;
   link: string;
   date: Date;

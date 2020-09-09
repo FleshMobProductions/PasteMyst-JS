@@ -1,3 +1,6 @@
+/// <reference path="../index.ts" />
+import { CodeBlockMatchResult } from "../index";
+
 const pastemystJs = require('./../index');
 
 interface TimeInputResultObj {
@@ -67,21 +70,85 @@ describe('Myst Creation-Retrieval test', () => {
   });
 });
 
+describe('Malformed Requests test', () => {
+  const code = 'let val = { \'key\': \'value\' };'
+  const correctLanguage = pastemystJs.discordToPasteMystLanguage('js');
+  const wrongLanguage = 'jarvorscropt';
+  const correctExpiration = '1h';
+  const wrongExpiration = 'abcd1';
+
+  const postPasteMyst = async function (code, expiration, language) {
+    return await pastemystJs.createPasteMyst(code, expiration, language);
+  }
+
+  // Request with a wrong message will work, because if the message is not detected, it will still default 
+  // to a valid pastemyst language option, like Autodetect
+  test.concurrent('posting Myst with wrong language creates Myst with autodetect language', async () => {
+    const response = await postPasteMyst(code, correctExpiration, wrongLanguage);
+    expect(response.language).toBe('autodetect');
+  });
+  // Requests with invalid expiration strings are expected to fail (status code 400)
+  test.concurrent('posting Myst with wrong expiration throws error', async () => {
+    await expect(postPasteMyst(code, wrongExpiration, correctLanguage)).rejects.toThrow();
+  });
+  test.concurrent('posting Myst with wrong language and expiration throws error', async () => {
+    await expect(postPasteMyst(code, wrongExpiration, wrongLanguage)).rejects.toThrow();
+  });
+  test.concurrent('posting Myst with code value being undefined and valid language and expiration creates myst with \'undefined\' as code', async () => {
+    const response = await postPasteMyst(undefined, correctExpiration, correctLanguage);
+    expect(response.code).toBe('undefined');
+  });
+
+   // Requesting a wrong id (resulting in a web request on a non existent url) will return a 404 status code
+   test.concurrent('getPasteMyst for an invalid ID throws error', async () => {
+    await expect(pastemystJs.getPasteMyst('qwertzuisdfghjkxcvbdfghjfgh')).rejects.toThrow();
+  });  
+});
+
+interface DiscordCodeMessage {
+  content?: string;
+  regexResults: CodeBlockMatchResult[];
+}
+
 describe('Regex Method tests', () => {
-    const discordCodeMessage = `Hi, I have a problem
+  const codeBlock1 = `var value = new String("hello");
+  var matches = value.match(reg);
+  console.log(matches[0]);`;
+
+  const discordCodeMessage: DiscordCodeMessage = {
+    content: (`Hi, I have a problem
     Here is my code: 
     
-    \`\`\`
-    var value = new String("hello");
-    var matches = value.match(reg);
-    console.log(matches[0]);
-    \`\`\``;
+    \`\`\``
+      + codeBlock1
+      + `\`\`\``),
+    regexResults: [{
+      code: codeBlock1,
+      language: 'autodetect'
+    }]
+  };
+  
+  // Copy first message but append text after the code block: 
+  const discordMessageAfterCodeAppend: DiscordCodeMessage = JSON.parse(JSON.stringify(discordCodeMessage));
+  discordMessageAfterCodeAppend.content += '\nDoes someone know why I get a null reference exception for matches[0]?';
 
-    const discordMessageAfterCodeAppend = discordCodeMessage + '\nDoes someone know why I get a null reference exception for matches[0]?';
+  const codeBlock2 = `<?php echo 'test' ?>`;
+
+  const discordMessageLangSingleUppercase: DiscordCodeMessage = {
+    content: (`
+    problem: 
+    \`\`\`PHP`
+      + codeBlock2
+      + `\`\`\``),
+    regexResults: [{
+      code: codeBlock2, 
+      language: 'php'
+    }]
+  };
 
     const discordMessageLangSingle = `
     problem: 
-    \`\`\`php
+    \`\`\`PHP
     <?php echo 'test' ?>
     \`\`\`
     `;

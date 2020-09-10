@@ -34,7 +34,9 @@ const pastemystJs = require('pastemyst-js');
 
 There are 2 methods to send requests to the PasteMyst API. 
 
-- **createPasteMyst(code, expiration, language)** to create a code entry and
+- **createPasteMyst(code, expiration, language)** to create a code entry. 
+Information about valid parameter values can be found in the [getting valid expirations](#-getting-valid-expiration-strings-for-requests) and the [getting valid languages](#-getting-valid-language-options) section. 
+The code parameter can be any string value. 
 - **createPasteMyst(pasteMystId)** to retrieve an existing code entry
 
 Both methods are async and will return a PasteMyst information object. 
@@ -68,7 +70,7 @@ pastemystJs.getPasteMyst(examplePasteMystId)
   .then((pasteMystInfo) => {
     console.log('success');
   })
-  .catch((err)=> {
+  .catch((err) => {
     console.log('failure');
     console.error(err);
   });
@@ -76,7 +78,10 @@ pastemystJs.getPasteMyst(examplePasteMystId)
 
 ### Getting valid expiration strings for requests
 
-The PasteMyst API will reject requests for creating new code entries if the expiration value doesn't match with [accepted expiration values](https://github.com/CodeMyst/PasteMyst/blob/master/source/pastemyst.d) which are: **never, 1h, 2h, 10h, 1d, 2d, 1w, 1m** or **1y**.
+The PasteMyst API will reject requests for creating new code entries if the expiration value doesn't match with [accepted expiration values](https://github.com/CodeMyst/PasteMyst/blob/master/source/pastemyst.d).
+
+Valid expiration values are:  **never, 1h, 2h, 10h, 1d, 2d, 1w, 1m** or **1y**.
+
 To get a valid expiration string, following methods can be used:
 
 ```js
@@ -112,9 +117,23 @@ const expirationOptions = pastemystJs.getExpirationOptions();
 ### Getting valid language options
 
 When a code document is created with **createPasteMyst**, passed language values that are not valid for PasteMyst v1 are changed to '**autodetect**'. 
+
+Here is a [full list of the valid languages](https://github.com/CodeMyst/PasteMyst/blob/master/public/languages.txt) that can be used for PasteMyst v1. 
+
 There is also the possibility to retrieve an array with the valid language options:  
 ```js
 const languageOptions = pastemystJs.getLanguageOptions();
+```
+
+A valid discord/highlight.js language identifier can also be converted to a valid PasteMyst language option, if one is available. If no matching langauges was found, the result will default to '**autodetect**'. 
+```js
+const pasteMystLanguageMd = pastemystJs.discordToPasteMystLanguage('md');
+console.log(pasteMystLanguageMd); // 'markdown'
+
+// Discord supports actionscript syntax highlighting, PasteMyst v1 does not
+// The result will default to the default valid language option
+const pasteMystLanguageAS = pastemystJs.discordToPasteMystLanguage('actionscript');
+console.log(pasteMystLanguageAS); // 'autodetect'
 ```
 
 ### Discord bot helper methods
@@ -166,6 +185,41 @@ console.log(codeBlockInfos[0].language); // 'javascript'
 console.log(codeBlockInfos[0].code); // 'console.log([] != []);';
 ```
 
+### Usage with discord.js
+
+This example shows how to use discord.js to post a message as a PasteMyst document and return a link to the document if the request was successful: 
+```js
+const Discord = require('discord.js');
+const pastemystJs = require('pastemyst-js');
+const client = new Discord.Client();
+
+client.on('message', msg => {
+  const words = msg.content.split(' ');
+  const command = words[0];
+  // Skip the first word, which is stored in command, and reassemble the 
+  // original string with the remaining words
+  const argumentText = words.slice(1).join(' ');
+  if (command === '!codeblock') {
+    const codeBlockContent = argumentText;
+    const expirationTime = '2h';
+    const language = 'autodetect';
+    pastemystJs.createPasteMyst(codeBlockContent, expirationTime, language)
+      .then((pasteMystInfo) => {
+        msg.channel.send(`Your message has been posted as code block on ${pasteMystInfo.link}`);
+      })
+      .catch((err) => {
+        let errorMessage = `Posting code block failed with error: ${err}`;
+        // Limit response to 2000 characters, as this is the discord character 
+        // limit for one message
+        if (errorMessage.length > 2000) {
+          errorMessage = errorMessage.substring(0, 2000);
+        }
+        msg.cannel.send(errorMessage);
+      });
+  }
+});
+
+```
 
 ## License
 

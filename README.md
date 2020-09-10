@@ -1,6 +1,6 @@
 # PasteMyst-JS
 
-A wrapper for the [PasteMyst](https://paste.myst.rs/) web API for node.js with additional features for Discords bots. 
+A wrapper for the [PasteMyst](https://paste.myst.rs/) web API for node.js with additional features for Discord bots. 
 The source code is written in [TypeScript](https://www.typescriptlang.org/) and features [TSDoc](https://github.com/microsoft/tsdoc) documentation for the public API. 
 
 ## Generating the JavaScript Ouput files
@@ -37,7 +37,7 @@ There are 2 methods to send requests to the PasteMyst API.
 - **createPasteMyst(code, expiration, language)** to create a code entry and
 - **createPasteMyst(pasteMystId)** to retrieve an existing code entry
 
-both methods are async and will return a PasteMyst information object. 
+Both methods are async and will return a PasteMyst information object. 
 If those methods are used, possible error cases like request timeouts or HTTP 400 response codes should be handled too. 
 
 ```js

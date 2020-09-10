@@ -239,11 +239,7 @@ describe('Regex Method tests', () => {
     'message Without Code': messageWithoutCode
   };
 
-  console.log('Discord language to pastemyst language check');
-  // discordToPasteMystLanguage does not handle non string types at the moment
-  
-  const defaultPMLanguage = 'Unknown';
-  
+  const defaultPMLanguage = 'autodetect';  
   test(`discordToPasteMystLanguage: Unknown discord language returns ${defaultPMLanguage} PM language`, () => {
     expect(pastemystJs.discordToPasteMystLanguage('Some nonexisting language')).toBe(defaultPMLanguage)
   })
@@ -285,7 +281,6 @@ describe('Regex Method tests', () => {
     for (const [msgName, msgValue] of Object.entries(testEntryMap)) {
       test(`${msgName} should return ${msgValue.expectedCodeBlockCount} entries with correct values`, () => {
         const codeBlockInfos = pastemystJs.getFullDiscordCodeBlockInfo(msgValue.content);
-        console.log(codeBlockInfos);
         expect(codeBlockInfos.length).toBe(msgValue.expectedCodeBlockCount);
         if (codeBlockInfos.length >= msgValue.expectedCodeBlockCount) {
           for (let index = 0; index < msgValue.expectedCodeBlockCount; index++) {

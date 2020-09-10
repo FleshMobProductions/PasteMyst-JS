@@ -40,6 +40,8 @@ const pasteMystLanguages = {
     Yaml: 'yaml'
 };
 
+const pasteMystDefaultLanguage = pasteMystLanguages.Autodetect;
+
 const pasteMystExpiration = {
     OneHour: '1h' ,
     TwoHours: '2h' ,
@@ -184,10 +186,15 @@ const discordPMLanguageLookup = {
 // The language might not be set in a discord message, so first capture group is optional
 // For str.match expresisons. result[0] is the whole regext match, 
 // result[1] is first capture group match, result[2] is second capture group match etc
-const codeBlockRegex = /```([a-zA-Z]*)\s*\n([\s\S]*?)\n*```/;
+// When the language is not specified, there will be no matched language and the code block is the first capture group
+// To make sure there is always at least one matched capture group, we require the code block to have some content, 
+// so there needs to be at least one character in a code block
+// Include the \n to the language capture group and trim it out, otherwise there is no good approach I have 
+// found to make sure where the language declaration starts and where it ends
+const codeBlockRegex = /```([a-zA-Z]*\s*\n)*([\s\S]+?)\n*```/;
 // str.matchAll requires the regex to have the global flag set, otherwise TypeError will be thrown.
 // str.matchAll will also include capture group matches
-const codeBlockRegexMatchAll = /```([a-zA-Z]*)\s*\n([\s\S]*?)\n*```/g;
+const codeBlockRegexMatchAll = /```([a-zA-Z]*\s*\n)*([\s\S]+?)\n*```/g;
 
 /**
  * Determine if a value is a String
@@ -199,51 +206,109 @@ function isString(val) {
     return typeof val == 'string' || val instanceof String;
   }
 
+/**
+ * Tries to convert the specified discord code block language into a 
+ * valid PasteMyst language. If no matching language was found, will return 'autodetect'
+ * 
+ * @remarks 
+ * Discord uses highlight.js, as such, the conversion should work for highlight.js language 
+ * keywords that related to one of the accepted languages of PasteMyst v1, a list of which can 
+ * be seen {@link https://github.com/CodeMyst/PasteMyst/blob/master/public/languages.txt | here}. 
+ * 
+ * @param discordLanguage - The specified code language (case insensitive) in the discord message 
+ * (values that follow the initial ``` and work for highlighting syntax in a code block)
+ * @returns A valid PasteMyst language
+ */
 function discordToPasteMystLanguage(discordLanguage) {
-    const pasteMystLanguage = discordPMLanguageLookup[discordLanguage.toLowerCase()];
-    return pasteMystLanguage !== undefined ? pasteMystLanguage : 'Unkown';
+    const pasteMystLanguage = discordPMLanguageLookup[discordLanguage.toLowerCase().trim()];
+    return pasteMystLanguage !== undefined ? pasteMystLanguage : pasteMystDefaultLanguage;
 }
 
 exports.discordToPasteMystLanguage = discordToPasteMystLanguage;
 
-// getFirstDiscordCodeBlockLanguage and getFirstDiscordCodeBlockContent currently 
-// Only support processing of the first code block of a message with potentially 
-// multiple blocks
-exports.getFirstDiscordCodeBlockLanguage = function(message) {
-    if (message != null && isString(message)) {
-        const languageCodeMatches = message.match(codeBlockRegex);
-        //console.log('getFirstDiscordCodeBlockLanguage: found languageCodeMatches:');
-        //console.log(languageCodeMatches);
-        if (languageCodeMatches && languageCodeMatches.length > 1) {
-            return discordToPasteMystLanguage(languageCodeMatches[1]);
-        }
-    } 
-    return 'Unknown';
-}
-
-exports.getFirstDiscordCodeBlockContent = function(message) {
-    if (message != null && isString(message)) {
-        const languageCodeMatches = message.match(codeBlockRegex);
-        //console.log('getFirstDiscordCodeBlockContent: found languageCodeMatches:');
-        //console.log(languageCodeMatches);
-        if (languageCodeMatches && languageCodeMatches.length > 2) {
-            return languageCodeMatches[2];
-        }
-    } 
-    return '';
-}
-
+/**
+ * Checks if a discord message contains at least 1 code block
+ * 
+ * @remarks
+ * discord code blocks start and end with ```
+ * 
+ * @param message - The Discord message
+ * @returns true if a codeblock was found, otherwise false
+ */
 exports.containsDiscordCodeBlock = function(message) {
     return message != null && isString(message) && codeBlockRegex.test(message);
 }
 
+/**
+ * Converts the specified language of the first code block of a 
+ * discord into the matching valid PasteMyst language and returns it. 
+ * If no code block exists in the message, null will be returned. 
+ * If a code block exists but either no language was defined, or 
+ * no matching PasteMyst language was found, 'autodetect' is returned. 
+ * 
+ * @remarks
+ * discord code blocks start and end with ```
+ * 
+ * @param message - The discord message
+ * @returns The first code block string if one is available, otherwise null
+ */
+exports.getFirstDiscordCodeBlockLanguage = function(message) {
+    if (message != null && isString(message)) {
+        const languageCodeMatches = message.match(codeBlockRegex);
+        if (languageCodeMatches) {
+            const discordLanguage = getDiscordCodeLanguageFromMatch(languageCodeMatches);
+            return discordToPasteMystLanguage(discordLanguage);
+        }
+    } 
+    return null;
+}
+
+/**
+ * Returns the body of the first code block of a discord message, If one is available
+ * 
+ * @remarks
+ * discord code blocks start and end with ```
+ * 
+ * @param message - The Discord message
+ * @returns The first code block string if one is available, otherwise null
+ */
+exports.getFirstDiscordCodeBlockContent = function(message) {
+    if (message != null && isString(message)) {
+        const languageCodeMatches = message.match(codeBlockRegex);
+        if (languageCodeMatches) {
+            const discordCodeBlock = getDiscordCodeBlockBodyFromMatch(languageCodeMatches);
+            return discordCodeBlock;
+        }
+    } 
+    return null;
+}
+
+// If optional capture groups like the language group are not found, they 
+// still have their reserved index in the match but are undefined
+function getDiscordCodeLanguageFromMatch(match) {
+    const discordLanguage = match[1] !== undefined ? match[1].trim() : '';
+    return discordLanguage;
+}
+
+function getDiscordCodeBlockBodyFromMatch(match) {
+    const discordCodeBlock = match[2];
+    return discordCodeBlock;
+}
+
+/**
+ * Returns an array with PasteMyst relevant information for all code blocks in a discord message
+ * 
+ * @remarks
+ * discord code blocks start and end with ```
+ * 
+ * @param message - The Discord message
+ * @returns An array of objects with the keys 'language' for the PasteMyst compatible language and 'code' for the code block content
+ */
 exports.getFullDiscordCodeBlockInfo = function(message) {
     let codeBlockInfos = [];
     if (message != null && isString(message)) {
         const matches = message.matchAll(codeBlockRegexMatchAll);
-        //console.log('getFullCodeBlockInfo: found matches:');
         for (const match of matches) {
-            //console.log(match);
             if (match) {
                 const matchDetails = getCodeBlockRgxMatchDetail(match);
                 codeBlockInfos.push(matchDetails);
@@ -254,30 +319,60 @@ exports.getFullDiscordCodeBlockInfo = function(message) {
 }
 
 function getCodeBlockRgxMatchDetail(match) {
-    if (match && match.length > 2) {
-        return {
-            language: discordToPasteMystLanguage(match[1]), 
-            code: match[2]
-        };
-    }
-    return {};
+    const discordLanguage = getDiscordCodeLanguageFromMatch(match);
+    return {
+        language: discordToPasteMystLanguage(discordLanguage), 
+        code: getDiscordCodeBlockBodyFromMatch(match)
+    };
 }
 
+/**
+ * Uses the cumulative time value of the input parameters and returns a PasteMyst expiration 
+ * that matches at least the duration of the input time or a higher value
+ * 
+ * @param months - Number of months (1 month is counted as 30 days)
+ * @param days - Number of days
+ * @param hours - Number of hours
+ * @returns A valid PasteMyst expiration value
+ */
 exports.getNextHigherExpiration = function(months, days, hours) {
     const expirationHours = getHours(months, days, hours);
     return getNextHigherExpirationFromHours(expirationHours);
 }
 
+/**
+ * Returns a PasteMyst expiration 
+ * that matches at least the duration of the input time or a higher value
+ * 
+ * @param expirationSeconds - The expiration duration in seconds
+ * @returns A valid PasteMyst expiration value
+ */
 exports.getNextHigherExpirationFromSeconds = function(expirationSeconds) {
     const expirationHours = secondsToHours(expirationSeconds);
     return getNextHigherExpirationFromHours(expirationHours);
 }
 
+/**
+ * Uses the cumulative time value of the input parameters and returns a PasteMyst expiration 
+ * that matches maximally the duration of the input time or a lower value
+ * 
+ * @param months - Number of months (1 month is counted as 30 days)
+ * @param days - Number of days
+ * @param hours - Number of hours
+ * @returns A valid PasteMyst expiration value
+ */
 exports.getNextLowerExpiration = function(months, days, hours) {
     const expirationHours = getHours(months, days, hours);
     return getNextLowerExpirationFromHours(expirationHours);
 }
 
+/**
+ * Returns a PasteMyst expiration 
+ * that matches maximally the duration of the input time or a lower value
+ * 
+ * @param expirationSeconds - The expiration duration in seconds
+ * @returns A valid PasteMyst expiration value
+ */
 exports.getNextLowerExpirationFromSeconds = function(expirationSeconds) {
     const expirationHours = secondsToHours(expirationSeconds);
     return getNextLowerExpirationFromHours(expirationHours);
@@ -342,7 +437,7 @@ function getNextLowerExpirationFromHours(expirationHours) {
 function getPreviousExpiration(expirationStr) {
     let index = validExpirations.indexOf(expirationStr);
     if (index < 0) {
-        return 'never';
+        return pasteMystExpiration.Never;
     }
     if (index == 0) {
         return getMinimumExpiration();
@@ -356,10 +451,11 @@ function getMinimumExpiration() {
 
 // language will default to pasteMystLanguages.Autodetect if no valid language is specified
 function getValidLanguage(value) {
-    return getValidKeyword(value, validLanguages, pasteMystLanguages.Autodetect);
+    return getValidKeyword(value, validLanguages, pasteMystDefaultLanguage);
 }
 
-function getValidExpiration(value) {
+// returns the input if value is a valid expiration, otherwise 'Unknown'
+function getExpiration(value) {
     return getValidKeyword(value, validExpirations, 'Unknown');
 }
 
@@ -391,7 +487,7 @@ function createForm(code, expiresIn, language) {
     return new PasteMystForm
     (
         encodeURI(code), 
-        getValidExpiration(expiresIn),
+        getExpiration(expiresIn),
         getValidLanguage(language)
     );
 };
@@ -432,8 +528,18 @@ function convertUTCDateToLocalDate(date) {
     return newDate;   
 }
 
+/**
+ * Sends a post request to the PasteMyst service, requesting the creation of the PasteMyst with the specified values. 
+ * The caller of this method should add error handling as this method throws if there is an http request 
+ * error (for example from the post payload having invalid values, such as a non-valid expiration string)
+ * or in case the response was malformed
+ * 
+ * @param code - The code/text content of the PasteMyst
+ * @param expiration - A valid expiration string. If invalid, the service will reject the request
+ * @param language - A valid PasteMyst language option. If invalid, the language will default to 'autodetect'
+ * @returns A processed version of the PasteMyst information the server returns for the PasteMyst that was created in this request
+ */
 exports.createPasteMyst = async function(code, expiration, language) {
-    console.log(`postMyst: code: ${code}, expiration: ${expiration}, language: ${language}`);
     const form = createForm(code, expiration, language);
     const json = JSON.stringify(form);
     const options = {
@@ -445,13 +551,19 @@ exports.createPasteMyst = async function(code, expiration, language) {
         }, 
         data: json
     };
-    console.log(options);
     const axiosRequest = axios(options)
     return await handleAxiosRequestAndCreateMyst(axiosRequest);
 }
 
+/**
+ * Requests and returns a PasteMyst from the PasteMyst service. 
+ * The caller of this method should add error handling as this method throws if there is an http request 
+ * error (for example from passing an invalid ID) or in case the response was malformed
+ * 
+ * @param id - The ID of the myst to retrieve
+ * @returns A processed version of the PasteMyst information the server returns
+ */
 exports.getPasteMyst = async function(id) {
-    console.log(`getInfo: id: ${id}`);
     const axiosRequest = axios.get(pasteMystUrlInfo.getEndpoint + id);
     return await handleAxiosRequestAndCreateMyst(axiosRequest);
 }
@@ -495,10 +607,20 @@ function getMalformedResponseDataMessage(responseData) {
 }
 
 // Return a copy of the array to prevent external code from editing the source array
+/**
+ * Returns a copy of the array containing all valid PasteMyst v1 language options
+ * 
+ * @returns All valid PasteMyst v1 language options
+ */
 exports.getLanguageOptions = function() {
     return validLanguages.slice();
 }
 
+/**
+ * Returns a copy of the array containing all valid PasteMyst expiration options
+ * 
+ * @returns All valid PasteMyst expiration options
+ */
 exports.getExpirationOptions = function() {
     return validExpirations.slice();
 }

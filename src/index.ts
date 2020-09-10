@@ -193,10 +193,12 @@ const discordPMLanguageLookup:StringValueObject = {
 // When the language is not specified, there will be no matched language and the code block is the first capture group
 // To make sure there is always at least one matched capture group, we require the code block to have some content, 
 // so there needs to be at least one character in a code block
-const codeBlockRegex = /```([a-zA-Z]*)\s*\n([\s\S]+?)\n*```/;
+// Include the \n to the language capture group and trim it out, otherwise there is no good approach I have 
+// found to make sure where the language declaration starts and where it ends
+const codeBlockRegex = /```([a-zA-Z]*\s*\n)*([\s\S]+?)\n*```/;
 // str.matchAll requires the regex to have the global flag set, otherwise TypeError will be thrown.
 // str.matchAll will also include capture group matches
-const codeBlockRegexMatchAll = /```([a-zA-Z]*)\s*\n([\s\S]+?)\n*```/g;
+const codeBlockRegexMatchAll = /```([a-zA-Z]*\s*\n)*([\s\S]+?)\n*```/g;
 
 /**
  * Determine if a value is a String
@@ -228,9 +230,19 @@ function discordToPasteMystLanguage(discordLanguage:string) {
 
 exports.discordToPasteMystLanguage = discordToPasteMystLanguage;
 
-// getFirstDiscordCodeBlockLanguage and getFirstDiscordCodeBlockContent currently 
-// Only support processing of the first code block of a message with potentially 
-// multiple blocks
+/**
+ * Checks if a discord message contains at least 1 code block
+ * 
+ * @remarks
+ * discord code blocks start and end with ```
+ * 
+ * @param message - The Discord message
+ * @returns true if a codeblock was found, otherwise false
+ */
+exports.containsDiscordCodeBlock = function(message:string):boolean {
+    return message != null && isString(message) && codeBlockRegex.test(message);
+}
+
 /**
  * Converts the specified language of the first code block of a 
  * discord into the matching valid PasteMyst language and returns it. 
@@ -247,31 +259,12 @@ exports.discordToPasteMystLanguage = discordToPasteMystLanguage;
 exports.getFirstDiscordCodeBlockLanguage = function(message:string):string|null {
     if (message != null && isString(message)) {
         const languageCodeMatches = message.match(codeBlockRegex);
-        //console.log('getFirstDiscordCodeBlockLanguage: found languageCodeMatches:');
-        //console.log(languageCodeMatches);
         if (languageCodeMatches) {
             const discordLanguage = getDiscordCodeLanguageFromMatch(languageCodeMatches);
             return discordToPasteMystLanguage(discordLanguage);
         }
     } 
     return null;
-}
-
-function getDiscordCodeLanguageFromMatch(match: RegExpMatchArray) {
-    // match array should at least have a length of 3, meaning 2 capture groups is matched, 
-    // then the first capture group (index 1) is the languge. If the length is 2 and 
-    // only one capture group is matched, this means that we only found a code block and no language
-    const discordLanguage = match.length >= 3 ? match[1] : '';
-    return discordLanguage;
-}
-
-function getDiscordCodeBlockBodyFromMatch(match: RegExpMatchArray) {
-    // match array should at least have a length of 3, meaning 2 capture groups is matched, 
-    // then the second capture group (index 2) is the languge. If the length is 2 and 
-    // only one capture group is matched, this means that we only found a code block and no language, 
-    // so the first capture group (index 1) is the code block content
-    const discordCodeBlock = match.length >= 3 ? match[2] :  match[1];
-    return discordCodeBlock;
 }
 
 /**
@@ -286,8 +279,6 @@ function getDiscordCodeBlockBodyFromMatch(match: RegExpMatchArray) {
 exports.getFirstDiscordCodeBlockContent = function(message:string):string|null {
     if (message != null && isString(message)) {
         const languageCodeMatches = message.match(codeBlockRegex);
-        //console.log('getFirstDiscordCodeBlockContent: found languageCodeMatches:');
-        //console.log(languageCodeMatches);
         if (languageCodeMatches) {
             const discordCodeBlock = getDiscordCodeBlockBodyFromMatch(languageCodeMatches);
             return discordCodeBlock;
@@ -296,22 +287,18 @@ exports.getFirstDiscordCodeBlockContent = function(message:string):string|null {
     return null;
 }
 
-/**
- * Checks if a discord message contains at least 1 code block
- * 
- * @remarks
- * discord code blocks start and end with ```
- * 
- * @param message - The Discord message
- * @returns true if a codeblock was found, otherwise false
- */
-exports.containsDiscordCodeBlock = function(message:string):boolean {
-    return message != null && isString(message) && codeBlockRegex.test(message);
+// If optional capture groups like the language group are not found, they 
+// still have their reserved index in the match but are undefined
+function getDiscordCodeLanguageFromMatch(match: RegExpMatchArray) {
+    const discordLanguage = match[1] !== undefined ? match[1].trim() : '';
+    return discordLanguage;
 }
 
-// ToDo: what if the language was not defined for the code block, will we still get a second match? how can we ensure that? 
-// If there is only one match, that must mean that the match is the code and not the language, so make sure that the 
-// code match can never be omitted
+function getDiscordCodeBlockBodyFromMatch(match: RegExpMatchArray) {
+    const discordCodeBlock = match[2];
+    return discordCodeBlock;
+}
+
 /**
  * Returns an array with PasteMyst relevant information for all code blocks in a discord message
  * 
@@ -325,9 +312,7 @@ exports.getFullDiscordCodeBlockInfo = function(message:string):CodeBlockMatchRes
     let codeBlockInfos = [];
     if (message != null && isString(message)) {
         const matches = message.matchAll(codeBlockRegexMatchAll);
-        //console.log('getFullCodeBlockInfo: found matches:');
         for (const match of matches) {
-            //console.log(match);
             if (match) {
                 const matchDetails = getCodeBlockRgxMatchDetail(match);
                 codeBlockInfos.push(matchDetails);
@@ -478,7 +463,8 @@ function getValidLanguage(value:string) {
     return getValidKeyword(value, validLanguages, pasteMystDefaultLanguage);
 }
 
-function getValidExpiration(value:string) {
+// returns the input if value is a valid expiration, otherwise 'Unknown'
+function getExpiration(value:string) {
     return getValidKeyword(value, validExpirations, 'Unknown');
 }
 
@@ -514,7 +500,7 @@ function createForm(code:string, expiresIn:string, language:string) {
     return new PasteMystForm
     (
         encodeURI(code), 
-        getValidExpiration(expiresIn),
+        getExpiration(expiresIn),
         getValidLanguage(language)
     );
 };
@@ -536,6 +522,14 @@ export class PasteMystInfo {
         this.language = language;
     }
 }
+
+interface PMServerResponse {
+    id: string;
+    createdAt: number;
+    code: string;
+    expiresIn: string;
+    language: string;
+  }
 
 function createPasteMystInfoFromResponse(response:PMServerResponse) {
     return new PasteMystInfo
@@ -574,7 +568,6 @@ function convertUTCDateToLocalDate(date:Date) {
  * @returns A processed version of the PasteMyst information the server returns for the PasteMyst that was created in this request
  */
 exports.createPasteMyst = async function(code:string, expiration:string, language:string):Promise<PasteMystInfo> {
-    console.log(`postMyst: code: ${code}, expiration: ${expiration}, language: ${language}`);
     const form = createForm(code, expiration, language);
     const json = JSON.stringify(form);
     const options = {
@@ -586,7 +579,6 @@ exports.createPasteMyst = async function(code:string, expiration:string, languag
         }, 
         data: json
     };
-    console.log(options);
     const axiosRequest = axios(options)
     return await handleAxiosRequestAndCreateMyst(axiosRequest);
 }
@@ -600,7 +592,6 @@ exports.createPasteMyst = async function(code:string, expiration:string, languag
  * @returns A processed version of the PasteMyst information the server returns
  */
 exports.getPasteMyst = async function(id:string):Promise<PasteMystInfo> {
-    console.log(`getInfo: id: ${id}`);
     const axiosRequest = axios.get(pasteMystUrlInfo.getEndpoint + id);
     return await handleAxiosRequestAndCreateMyst(axiosRequest);
 }
@@ -624,14 +615,6 @@ async function handleAxiosRequestAndCreateMyst(axiosRequest:any) {
     catch (dataParseError) {
         throw `Response received, error trying to create PasteMystInfo from it: ${dataParseError}`
     }
-}
-
-interface PMServerResponse {
-  id: string;
-  createdAt: number;
-  code: string;
-  expiresIn: string;
-  language: string;
 }
 
 const requiredResponseDataAttributes = [

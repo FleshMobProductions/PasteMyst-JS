@@ -4,7 +4,6 @@
   "description": "A wrapper for the pastemyst web API for node.js with additional features for discords bots",
   "main": "index.js",
   "scripts": {
-    "testOld": "npm run test.js",
     "test": "jest --config jestconfig.json",
     "build": "tsc",
     "format": "prettier --write \"src/**/*.ts\" \"src/**/*.js\"",

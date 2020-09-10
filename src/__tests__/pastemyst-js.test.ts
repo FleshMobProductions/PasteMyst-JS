@@ -1,6 +1,3 @@
-/// <reference path="../index.ts" />
-//import { CodeBlockMatchResult } from "../index";
-
 const pastemystJs = require('./../index');
 
 describe('Expiration Estimation test:', () => {

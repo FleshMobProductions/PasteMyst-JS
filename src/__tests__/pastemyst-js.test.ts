@@ -109,6 +109,55 @@ interface DiscordCodeMessage {
   regexResults: CodeBlockMatchInput[];
 }
 
+describe('readme Regex tests', () => {
+  const discordMessage = `
+Hi, I was wondering if someone could help me with this problem? 
+I was testing if I can check if an array is empty, but this code returns true?
+  
+\`\`\`js
+console.log([] != []);
+\`\`\`.
+  
+  Someone was suggesting that I should just check the length of the array. 
+  Is this the best way to do it or are there better ways?: 
+  
+\`\`\`js
+if (arrayVar.length == 0) {
+  console.log('empty array');
+}
+\`\`\`.
+  
+  `;
+  const expectedLanguage = 'javascript';
+  const expectedCode1 = 'console.log([] != []);';
+  const expectedCode2 = `if (arrayVar.length == 0) {
+  console.log('empty array');
+}`;
+
+  test(`message should contain code block: true`, () => {
+    expect(pastemystJs.containsDiscordCodeBlock(discordMessage)).toBe(true);
+  });
+
+  test(`getFirstDiscordCodeBlockLanguage for message should return ${expectedLanguage}`, () => {
+    expect(pastemystJs.getFirstDiscordCodeBlockLanguage(discordMessage)).toBe(expectedLanguage);
+  });
+
+  test(`getFirstDiscordCodeBlockContent for message should return ${expectedCode1}`, () => {
+    expect(pastemystJs.getFirstDiscordCodeBlockContent(discordMessage)).toBe(expectedCode1);
+  });
+
+  test(`getFullDiscordCodeBlockInfo for message should have correct values ${expectedCode1}`, () => {
+    const codeBlockInfos = pastemystJs.getFullDiscordCodeBlockInfo(discordMessage);
+    expect(codeBlockInfos.length).toBe(2);
+    if (codeBlockInfos.length >= 2) { 
+      for (let index = 0; index < 2; index++) {
+        expect(codeBlockInfos[index].language).toBe(expectedLanguage);
+        expect(codeBlockInfos[index].code).toBe(index == 0 ? expectedCode1 : expectedCode2);
+      }
+    }
+  });
+});
+
 describe('Regex Method tests', () => {
   const codeBlock1 = `var value = new String("hello");
   var matches = value.match(reg);

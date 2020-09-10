@@ -168,7 +168,8 @@ console.log(codeBlockInfos[0].code); // 'console.log([] != []);';
 
 ## Setting up for Discord.js
 
-```const Discord = require('discord.js')
+```js
+const Discord = require('discord.js')
 const pastemyst = require('pastemyst-js') //import the library into your file. (make sure you have it installed!)
 
     //If the user does not have anything to paste, then return and tell the user to add some text!
@@ -183,7 +184,8 @@ const pastemyst = require('pastemyst-js') //import the library into your file. (
             //send the PasteMyst link in the chat.
             message.channel.send(pasteMystInfo.link);
          })
-}```
+}
+```
 
 
 ## License

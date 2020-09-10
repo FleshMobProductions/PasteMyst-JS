@@ -184,9 +184,9 @@ const pastemystJs = require('./index'); // Error without the ;
         }
     };
 
-    //testMystCreationAndRetrieval();
+    testMystCreationAndRetrieval();
     testMalformedRequests();
-    //testRegexMethods();
-    //testExpirationEstimation();
+    testRegexMethods();
+    testExpirationEstimation();
 
 })();

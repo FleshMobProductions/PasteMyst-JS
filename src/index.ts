@@ -1,4 +1,4 @@
-const axios = require("axios")
+const axios = require('axios').default;
 
 interface StringValueObject {
   [key:string]:string
@@ -207,7 +207,7 @@ const codeBlockRegexMatchAll = /```([a-zA-Z]*\s*\n)*([\s\S]+?)\n*```/g;
  * @returns {boolean} True if value is a String, otherwise false
  */
 function isString(val:any) {
-    return typeof val == 'string' || val instanceof String;
+    return typeof val === 'string' || val instanceof String;
   }
 
 /**
@@ -239,7 +239,7 @@ exports.discordToPasteMystLanguage = discordToPasteMystLanguage;
  * @param message - The Discord message
  * @returns true if a codeblock was found, otherwise false
  */
-exports.containsDiscordCodeBlock = function(message:string):boolean {
+exports.containsDiscordCodeBlock = (message:string):boolean => {
     return message != null && isString(message) && codeBlockRegex.test(message);
 }
 
@@ -256,7 +256,7 @@ exports.containsDiscordCodeBlock = function(message:string):boolean {
  * @param message - The discord message
  * @returns The first code block string if one is available, otherwise null
  */
-exports.getFirstDiscordCodeBlockLanguage = function(message:string):string|null {
+exports.getFirstDiscordCodeBlockLanguage = (message:string):string|null => {
     if (message != null && isString(message)) {
         const languageCodeMatches = message.match(codeBlockRegex);
         if (languageCodeMatches) {
@@ -276,7 +276,7 @@ exports.getFirstDiscordCodeBlockLanguage = function(message:string):string|null 
  * @param message - The Discord message
  * @returns The first code block string if one is available, otherwise null
  */
-exports.getFirstDiscordCodeBlockContent = function(message:string):string|null {
+exports.getFirstDiscordCodeBlockContent = (message:string):string|null => {
     if (message != null && isString(message)) {
         const languageCodeMatches = message.match(codeBlockRegex);
         if (languageCodeMatches) {
@@ -308,8 +308,8 @@ function getDiscordCodeBlockBodyFromMatch(match: RegExpMatchArray) {
  * @param message - The Discord message
  * @returns An array of objects with the keys 'language' for the PasteMyst compatible language and 'code' for the code block content
  */
-exports.getFullDiscordCodeBlockInfo = function(message:string):CodeBlockMatchResult[] {
-    let codeBlockInfos = [];
+exports.getFullDiscordCodeBlockInfo = (message:string):CodeBlockMatchResult[] => {
+    const codeBlockInfos = [];
     if (message != null && isString(message)) {
         const matches = message.matchAll(codeBlockRegexMatchAll);
         for (const match of matches) {
@@ -344,7 +344,7 @@ function getCodeBlockRgxMatchDetail(match: RegExpMatchArray): CodeBlockMatchResu
  * @param hours - Number of hours
  * @returns A valid PasteMyst expiration value
  */
-exports.getNextHigherExpiration = function(months:number, days:number, hours:number):PasteMystExpiration {
+exports.getNextHigherExpiration = (months:number, days:number, hours:number):PasteMystExpiration => {
     const expirationHours = getHours(months, days, hours);
     return getNextHigherExpirationFromHours(expirationHours);
 }
@@ -356,7 +356,7 @@ exports.getNextHigherExpiration = function(months:number, days:number, hours:num
  * @param expirationSeconds - The expiration duration in seconds
  * @returns A valid PasteMyst expiration value
  */
-exports.getNextHigherExpirationFromSeconds = function(expirationSeconds:number):PasteMystExpiration {
+exports.getNextHigherExpirationFromSeconds = (expirationSeconds:number):PasteMystExpiration => {
     const expirationHours = secondsToHours(expirationSeconds);
     return getNextHigherExpirationFromHours(expirationHours);
 }
@@ -370,7 +370,7 @@ exports.getNextHigherExpirationFromSeconds = function(expirationSeconds:number):
  * @param hours - Number of hours
  * @returns A valid PasteMyst expiration value
  */
-exports.getNextLowerExpiration = function(months:number, days:number, hours:number):PasteMystExpiration {
+exports.getNextLowerExpiration = (months:number, days:number, hours:number):PasteMystExpiration => {
     const expirationHours = getHours(months, days, hours);
     return getNextLowerExpirationFromHours(expirationHours);
 }
@@ -382,7 +382,7 @@ exports.getNextLowerExpiration = function(months:number, days:number, hours:numb
  * @param expirationSeconds - The expiration duration in seconds
  * @returns A valid PasteMyst expiration value
  */
-exports.getNextLowerExpirationFromSeconds = function(expirationSeconds:number):PasteMystExpiration {
+exports.getNextLowerExpirationFromSeconds = (expirationSeconds:number):PasteMystExpiration => {
     const expirationHours = secondsToHours(expirationSeconds);
     return getNextLowerExpirationFromHours(expirationHours);
 }
@@ -444,14 +444,14 @@ function getNextLowerExpirationFromHours(expirationHours:number):PasteMystExpira
 }
 
 function getPreviousExpiration(expirationStr:string):PasteMystExpiration {
-    let index = validExpirations.indexOf(expirationStr);
+    const index = validExpirations.indexOf(expirationStr);
     if (index < 0) {
         return PasteMystExpiration.Never;
     }
-    if (index == 0) {
+    if (index === 0) {
         return getMinimumExpiration();
     }
-    return <PasteMystExpiration> validExpirations[index - 1];
+    return validExpirations[index - 1] as PasteMystExpiration;
 }
 
 function getMinimumExpiration():PasteMystExpiration {
@@ -552,7 +552,7 @@ function localDateFromUnixSeconds(unixSeconds:number) {
 }
 
 function convertUTCDateToLocalDate(date:Date) {
-    var newDate = new Date(date.getTime() - date.getTimezoneOffset()*60*1000);
+    const newDate = new Date(date.getTime() - date.getTimezoneOffset()*60*1000);
     return newDate;   
 }
 
@@ -567,7 +567,7 @@ function convertUTCDateToLocalDate(date:Date) {
  * @param language - A valid PasteMyst language option. If invalid, the language will default to 'autodetect'
  * @returns A processed version of the PasteMyst information the server returns for the PasteMyst that was created in this request
  */
-exports.createPasteMyst = async function(code:string, expiration:string, language:string):Promise<PasteMystInfo> {
+exports.createPasteMyst = async (code:string, expiration:string, language:string):Promise<PasteMystInfo> => {
     const form = createForm(code, expiration, language);
     const json = JSON.stringify(form);
     const options = {
@@ -591,7 +591,7 @@ exports.createPasteMyst = async function(code:string, expiration:string, languag
  * @param id - The ID of the myst to retrieve
  * @returns A processed version of the PasteMyst information the server returns
  */
-exports.getPasteMyst = async function(id:string):Promise<PasteMystInfo> {
+exports.getPasteMyst = async (id:string):Promise<PasteMystInfo> => {
     const axiosRequest = axios.get(pasteMystUrlInfo.getEndpoint + id);
     return await handleAxiosRequestAndCreateMyst(axiosRequest);
 }
@@ -606,14 +606,14 @@ async function handleAxiosRequestAndCreateMyst(axiosRequest:any) {
     }
     if (!validateResponseData(response.data)) {
         const malformMessage = getMalformedResponseDataMessage(response.data);
-        throw `Response received, but malformed: ${malformMessage}`;
+        throw new Error(`Response received, but malformed: ${malformMessage}`);
     }
     try {
         const pasteMystInfo = createPasteMystInfoFromResponse(response.data);
         return pasteMystInfo;
     }
     catch (dataParseError) {
-        throw `Response received, error trying to create PasteMystInfo from it: ${dataParseError}`
+        throw new Error(`Response received, error trying to create PasteMystInfo from it: ${dataParseError}`);
     }
 }
 
@@ -640,7 +640,7 @@ function getMalformedResponseDataMessage(responseData:any) {
  * 
  * @returns All valid PasteMyst v1 language options
  */
-exports.getLanguageOptions = function() {
+exports.getLanguageOptions = () => {
     return validLanguages.slice();
 }
 
@@ -649,6 +649,6 @@ exports.getLanguageOptions = function() {
  * 
  * @returns All valid PasteMyst expiration options
  */
-exports.getExpirationOptions = function() {
+exports.getExpirationOptions = () => {
     return validExpirations.slice();
 }

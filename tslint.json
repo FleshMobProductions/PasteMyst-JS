@@ -1,3 +1,8 @@
 {
-  "extends": ["tslint:recommended", "tslint-config-prettier"]
+  "extends": ["tslint:recommended", "tslint-config-prettier"], 
+  "rules": {
+    "triple-equals": [true, "allow-undefined-check", "allow-null-check"], 
+    "max-classes-per-file": [false], 
+    "no-var-requires": false
+  }
 }

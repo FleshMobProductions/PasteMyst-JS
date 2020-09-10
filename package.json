@@ -2,7 +2,8 @@
   "name": "pastemyst-js",
   "version": "1.0.0",
   "description": "A wrapper for the pastemyst web API for node.js with additional features for discords bots",
-  "main": "index.js",
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
   "scripts": {
     "test": "jest --config jestconfig.json",
     "build": "tsc",

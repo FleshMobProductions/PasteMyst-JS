@@ -1,6 +1,6 @@
 {
   "name": "pastemyst-js",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "A wrapper for the pastemyst web API for node.js with additional features for discords bots",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",

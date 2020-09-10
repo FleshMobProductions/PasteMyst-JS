@@ -509,7 +509,15 @@ export class PasteMystInfo {
   expiresIn: string;
   language: string;
 
-  constructor(id: string, link: string, createdAt:number, date: Date, code: string, expiresIn: string, language: string) {
+  constructor(
+    id: string,
+    link: string,
+    createdAt: number,
+    date: Date,
+    code: string,
+    expiresIn: string,
+    language: string,
+  ) {
     this.id = id;
     this.link = link;
     this.createdAt = createdAt;

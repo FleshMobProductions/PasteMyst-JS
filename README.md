@@ -166,6 +166,25 @@ console.log(codeBlockInfos[0].language); // 'javascript'
 console.log(codeBlockInfos[0].code); // 'console.log([] != []);';
 ```
 
+## Setting up for Discord.js
+
+```const Discord = require('discord.js')
+const pastemyst = require('pastemyst-js') //import the library into your file. (make sure you have it installed!)
+
+    //If the user does not have anything to paste, then return and tell the user to add some text!
+    if (!args[0]) return message.channel.send('Please provide the code you\'d like me to paste!')
+    else {
+    let expireTime = /* Here, you have a few options - 'never', '1h', '2h', '10h', '1d', '2d', '1w', '1m', or '1y' */ 'never';
+    let language = /* Here, just paste in the language you'd like highlight in. I can't list all the languages here, but here is an example - 'java'. If you want to program to detect the language itself, just simply set it to 'autodetect' */ 'autodetect';
+       
+       //use args.join(' ') so the spaces won't turn into commas.
+       pastemyst.createPasteMyst(args.join(' '), expireTime, language)
+         .then((pasteMystInfo) => {
+            //send the PasteMyst link in the chat.
+            message.channel.send(pasteMystInfo.link);
+         })
+}```
+
 
 ## License
 

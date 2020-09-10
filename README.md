@@ -50,7 +50,9 @@ pastemystJs.createPasteMyst(codeBlockContent, expirationTime, language)
   .then((pasteMystInfo) => {
     console.log('success');
     console.log(pasteMystInfo.id);
-    console.log(pasteMystInfo.createdAt);
+    console.log(pasteMystInfo.link); // URL to the PasteMyst entry
+    console.log(pasteMystInfo.createdAt); // Creation date Linux seconds
+    console.log(pasteMystInfo.date); // 'Created at' date, UTC
     console.log(pasteMystInfo.code);
     console.log(pasteMystInfo.expiresIn);
     console.log(pasteMystInfo.language);

@@ -1,13 +1,22 @@
 {
   "name": "pastemyst-js",
   "version": "1.0.0",
-  "description": "A wrapper for the pastemyst web API for node.js",
+  "description": "A wrapper for the pastemyst web API for node.js with additional features for discords bots",
   "main": "index.js",
   "scripts": {
     "test": "node test.js"
   },
-  "author": "fleshmobproductions@gmail.com",
-  "license": "ISC",
+  "author": {
+    "name": "Simon",
+    "email": "fleshmobproductions@gmail.com"
+  },
+  "license": "MIT",
+  "keywords": [
+    "pastemyst",
+    "paste.myst",
+    "api wrapper",
+    "discord"
+  ],
   "dependencies": {
     "axios": "^0.20.0"
   }

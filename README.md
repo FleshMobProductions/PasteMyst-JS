@@ -40,8 +40,7 @@ There are 2 methods to send requests to the PasteMyst API.
     - **language** is used for PasteMyst to identify which language syntax highlighting (styling) should be applied to the document body. More information about valid values can be found in the [getting valid languages](#getting-valid-language-options) section. 
 
 
-- **createPasteMyst(pasteMystId)** to retrieve an existing code entry
-
+- **getPasteMyst(pasteMystId)** to retrieve an existing code entry
     - **pasteMystId** is the ID of the document, which is also used for the URL of the document (like https://paste.myst.rs/abc)
 
 Both methods are async and will return a PasteMyst information object. 

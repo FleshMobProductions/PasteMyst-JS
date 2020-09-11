@@ -35,19 +35,19 @@ const pastemystJs = require('pastemyst-js');
 There are 2 methods to send requests to the PasteMyst API. 
 
 - **createPasteMyst(code, expiration, language)** to create a code entry 
-    - **code** is used for the document content/body and can be any string value any string value. 
-    - **expiration** indicates how long a document is saved on the server, starting from the time of creation. If a document exceeded its expiration time, it is deleted from PasteMyst. More information about valid values can be found in the [getting valid expirations](#getting-valid-expiration-strings-for-requests) section. 
-    - **language** is used for PasteMyst to identify which language syntax highlighting (styling) should be applied to the document body. More information about valid values can be found in the [getting valid languages](#getting-valid-language-options) section. 
+    - **code** is used for the document content/body and can be any string value 
+    - **expiration** indicates how long a document is saved on the server, starting from the time of creation. If a document exceeded its expiration time, it is deleted from PasteMyst. More information about valid values can be found in the [getting valid expirations](#getting-valid-expiration-strings-for-requests) section 
+    - **language** is used for PasteMyst to identify which language syntax highlighting (styling) should be applied to the document body. More information about valid values can be found in the [getting valid languages](#getting-valid-language-options) section 
 
 
 - **getPasteMyst(pasteMystId)** to retrieve an existing code entry
     - **pasteMystId** is the ID of the document, which is also used for the URL of the document (like https://paste.myst.rs/abc)
 
-Both methods are async and will return a PasteMyst information object. 
+Both methods are async and will return a Promise for an PasteMyst information object. 
 If those methods are used, possible error cases like request timeouts or HTTP 400 response codes should be handled too. 
 
 ```js
-// Create new code document on PasteMyst
+// Create a new code document on PasteMyst
 const codeBlockContent = 'console.log(1);';
 const expirationTime = '1h';
 const language = 'javascript';
@@ -68,7 +68,7 @@ pastemystJs.createPasteMyst(codeBlockContent, expirationTime, language)
     console.error(err);
   });
 
-// Retrieve exsiting code document from PasteMyst by ID
+// Retrieve an existing code document from PasteMyst by ID
 const examplePasteMystId = 'abc';
 pastemystJs.getPasteMyst(examplePasteMystId)
   .then((pasteMystInfo) => {
@@ -82,7 +82,7 @@ pastemystJs.getPasteMyst(examplePasteMystId)
 
 ### Getting valid expiration strings for requests
 
-The PasteMyst API will reject requests for creating new code entries if the expiration value doesn't match with [accepted expiration values](https://github.com/CodeMyst/PasteMyst/blob/master/source/pastemyst.d).
+The PasteMyst API will reject requests for creating a new document if the expiration value doesn't match with [accepted expiration values](https://github.com/CodeMyst/PasteMyst/blob/master/source/pastemyst.d).
 
 Valid expiration values are:  **never, 1h, 2h, 10h, 1d, 2d, 1w, 1m** or **1y**.
 
@@ -91,7 +91,7 @@ To get a valid expiration string, following methods can be used:
 ```js
 const hourInSeconds = 60 * 60;
 
-// 36 hours returns '1d' as lower expiration and '2d' as higher expiration
+// A duration of 36 hours returns '1d' as lower expiration and '2d' as higher expiration
 const lowerExpiration36h = pastemystJs.getNextLowerExpirationFromSeconds(36 * hourInSeconds);
 console.log(lowerExpiration36h); // '1d'
 
@@ -129,7 +129,7 @@ There is also the possibility to retrieve an array with the valid language optio
 const languageOptions = pastemystJs.getLanguageOptions();
 ```
 
-A valid discord/highlight.js language identifier can also be converted to a valid PasteMyst language option, if one is available. If no matching langauges was found, the result will default to '**autodetect**'. 
+A valid discord/highlight.js language identifier can also be converted to a valid PasteMyst language option, if one is available. If no matching language was found, the result will default to '**autodetect**'. 
 ```js
 const pasteMystLanguageMd = pastemystJs.discordToPasteMystLanguage('md');
 console.log(pasteMystLanguageMd); // 'markdown'
@@ -191,16 +191,18 @@ console.log(codeBlockInfos[0].code); // 'console.log([] != []);';
 
 ### Usage with [discord.js](https://discord.js.org/)
 
-This example shows how to use [discord.js](https://discord.js.org/) to post a message as a PasteMyst document and return a link to the document if the request was successful. 
-A user has to send a message starting with **!codeblock** additional text. All words after !codeblock are used as document content for PasteMyst.
-The bot sends the message into the same channel the message was received from. If an error occurs during the request, the bot returns the details as a message. 
+This example shows how to use [discord.js](https://discord.js.org/) to create a PasteMyst document with the content of the incoming message and return a link to the document if the request was successful. 
+A user has to send a message starting with **!codeblock** and some additional text afterwards. All words after !codeblock are used as document content for PasteMyst.
+The bot sends the response messages back into the same channel the initial message was received from. If an error occurs during the request, the bot returns the details as a message. 
 ```js
 const Discord = require('discord.js');
 const pastemystJs = require('pastemyst-js');
 const client = new Discord.Client();
 
 client.on('message', msg => {
+  // Get words of message as array
   const words = msg.content.split(' ');
+  // First word is used as command identifier
   const command = words[0];
   // Skip the first word, which is stored in command, and reassemble the 
   // original string with the remaining words

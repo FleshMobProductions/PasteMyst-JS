@@ -34,13 +34,13 @@ const pastemystJs = require('pastemyst-js');
 
 There are 2 methods to send requests to the PasteMyst API. 
 
-- **createPasteMyst(code, expiration, language)** to create a code entry 
+- **createPasteMyst(code, expiration, language)** to create a code document entry 
     - **code** is used for the document content/body and can be any string value 
     - **expiration** indicates how long a document is saved on the server, starting from the time of creation. If a document exceeded its expiration time, it is deleted from PasteMyst. More information about valid values can be found in the [getting valid expirations](#getting-valid-expiration-strings-for-requests) section 
     - **language** is used for PasteMyst to identify which language syntax highlighting (styling) should be applied to the document body. More information about valid values can be found in the [getting valid languages](#getting-valid-language-options) section 
 
 
-- **getPasteMyst(pasteMystId)** to retrieve an existing code entry
+- **getPasteMyst(pasteMystId)** to retrieve an existing code document entry
     - **pasteMystId** is the ID of the document, which is also used for the URL of the document (like https://paste.myst.rs/abc)
 
 Both methods are async and will return a Promise for an PasteMyst information object. 

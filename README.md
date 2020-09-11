@@ -34,10 +34,15 @@ const pastemystJs = require('pastemyst-js');
 
 There are 2 methods to send requests to the PasteMyst API. 
 
-- **createPasteMyst(code, expiration, language)** to create a code entry. 
-Information about valid parameter values can be found in the [getting valid expirations](#-getting-valid-expiration-strings-for-requests) and the [getting valid languages](#-getting-valid-language-options) section. 
-The code parameter can be any string value. 
+- **createPasteMyst(code, expiration, language)** to create a code entry 
+    - **code** is used for the document content/body and can be any string value any string value. 
+    - **expiration** indicates how long a document is saved on the server, starting from the time of creation. If a document exceeded its expiration time, it is deleted from PasteMyst. More information about valid values can be found in the [getting valid expirations](#getting-valid-expiration-strings-for-requests) section. 
+    - **language** is used for PasteMyst to identify which language syntax highlighting (styling) should be applied to the document body. More information about valid values can be found in the [getting valid languages](#getting-valid-language-options) section. 
+
+
 - **createPasteMyst(pasteMystId)** to retrieve an existing code entry
+
+    - **pasteMystId** is the ID of the document, which is also used for the URL of the document (like https://paste.myst.rs/abc)
 
 Both methods are async and will return a PasteMyst information object. 
 If those methods are used, possible error cases like request timeouts or HTTP 400 response codes should be handled too. 
@@ -185,9 +190,11 @@ console.log(codeBlockInfos[0].language); // 'javascript'
 console.log(codeBlockInfos[0].code); // 'console.log([] != []);';
 ```
 
-### Usage with discord.js
+### Usage with [discord.js](https://discord.js.org/)
 
-This example shows how to use discord.js to post a message as a PasteMyst document and return a link to the document if the request was successful: 
+This example shows how to use [discord.js](https://discord.js.org/) to post a message as a PasteMyst document and return a link to the document if the request was successful. 
+A user has to send a message starting with **!codeblock** additional text. All words after !codeblock are used as document content for PasteMyst.
+The bot sends the message into the same channel the message was received from. If an error occurs during the request, the bot returns the details as a message. 
 ```js
 const Discord = require('discord.js');
 const pastemystJs = require('pastemyst-js');
@@ -220,6 +227,7 @@ client.on('message', msg => {
 });
 
 ```
+Thanks to [harshhh-dev](https://github.com/harshhh-dev) for suggesting changes to include the discord.js example and clarify parameter options for the PasteMyst API methods.  
 
 ## License
 

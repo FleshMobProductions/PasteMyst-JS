@@ -222,7 +222,7 @@ client.on('message', msg => {
         if (errorMessage.length > 2000) {
           errorMessage = errorMessage.substring(0, 2000);
         }
-        msg.cannel.send(errorMessage);
+        msg.channel.send(errorMessage);
       });
   }
 });
